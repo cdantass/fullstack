@@ -8,6 +8,8 @@ services:
              gunicorn sefaz_projeto.wsgi:application --bind 0.0.0.0:8000 --workers 4"
     env_file:
       - .env
+    volumes:
+      - staticfiles_volume:/app/staticfiles
     depends_on:
       - db
       - redis
@@ -15,6 +17,22 @@ services:
     networks:
       - backend-net
 
+  nginx:
+    build:
+      context: .
+      dockerfile: ./backend/nginx/Dockerfile
+    container_name: nginx_sefaz
+    volumes:
+      - staticfiles_volume:/app/staticfiles
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - frontend-net
+      - backend-net
+  
   celery:
     build:
       context: ./backend
@@ -26,20 +44,6 @@ services:
       - redis
     restart: always
     networks:
-      - backend-net
-
-  nginx:
-    build:
-      context: .
-      dockerfile: ./backend/nginx/Dockerfile
-    container_name: nginx_sefaz
-    restart: always
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-    networks:
-      - frontend-net
       - backend-net
 
   db:
@@ -85,3 +89,4 @@ networks:
 volumes:
   postgres_data:
   pgadmin_data:
+  staticfiles_volume:

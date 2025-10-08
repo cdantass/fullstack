@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+body, .main-sidebar, .main-header, .btn, .form-control, h1, h2, h3, h4, h5, h6 {
+    font-family: 'Roboto', sans-serif !important;
+}
+
+#content {
+    background-color: #f8f9fa !important;
+}
+
+.module {
+    border-radius: 8px !important;
+    border-top: 3px solid #003366 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+    background: #ffffff !important;
+}
+
+.module h2, .module caption {
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    color: #333 !important;
+}
+
+.module .addlink {
+    background-color: #003366 !important;
+    color: white !important;
+    border-radius: 5px !important;
+}
+
+.module .changelink {
+    background-color: #6c757d !important;
+    color: white !important;
+    border-radius: 5px !important;
+}
+
+.main-header.navbar {
+    background-color: #003366 !important;
+    border-bottom: none !important;
+}
+
+.main-header .nav-link, .main-header .navbar-brand-text {
+    color: #ffffff !important;
+}
+
+[class*="sidebar-light-"] .nav-sidebar > .nav-item > .nav-link {
+    color: #343a40 !important;
+}
+
+[class*="sidebar-light-"] .nav-sidebar > .nav-item > .nav-link.active {
+    color: #212529 !important;
+    font-weight: 700 !important;
+}
+
+.badge.bg-warning { background-color: #FFC107 !important; color: #000000 !important; }
+.badge.bg-success { background-color: #28A745 !important; color: #ffffff !important; }
+.badge.bg-danger { background-color: #DC3545 !important; color: #ffffff !important; }
+
+.brand-link {
+    height: 65px !important;
+    line-height: 65px !important;
+    padding: 0 0.5rem !important;
+    background-color: transparent !important;
+}
+
+.brand-link .brand-image {
+    height: 50px !important;
+    min-height: 50px !important;
+    width: auto !important;
+    max-width: 200px !important;
+    margin-left: 28px !important;
+    margin-right: 10px !important;
+    float: none !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+}
+
+.brand-link .brand-text {
+    display: inline-block !important;
+    vertical-align: middle !important;
+}
+
+body.login-page {
+    background-color: #f4f6f9 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100vh !important;
+}
+
+.login-box {
+    width: 400px !important;
+    background: #ffffff !important;
+    border-radius: 15px !important;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+    overflow: hidden;
+}
+
+.login-card-body {
+    padding: 2.5rem !important;
+}
+
+.login-logo {
+    background-color: #003366;
+    padding: 2rem;
+    margin-bottom: 0 !important;
+    border-bottom: 1px solid #dee2e6;
+    text-align: center;
+}
+
+.login-logo img {
+    max-width: 100% !important;
+    max-height: 100px !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+.login-card-body .btn {
+    background-color: #003366 !important;
+    border-color: #003366 !important;
+    font-weight: bold;
+    padding: 0.75rem !important;
+    border-radius: 8px !important;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.login-card-body .btn:hover {
+    background-color: #002244 !important;
+    border-color: #002244 !important;
+}

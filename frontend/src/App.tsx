@@ -1,6 +1,8 @@
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ReactKeycloakProvider, useKeycloak } from "@react-keycloak/web";
+import keycloak from "./keycloak";
 
-import Login from "./pages/Login";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import AutorizarPage from "./pages/autorizar-reserva";
@@ -10,21 +12,25 @@ import ReservaPage from "./pages/reservar-veiculo";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { MainLayout } from "./components/MainLayout";
+import { LoadingScreen } from "./components/LoadingScreen";
 
 import { ThemeProvider } from "./components/theme-provider";
 import { ReservaProvider } from "./pages/context/ReservaContext";
 import { AuthProvider } from "./pages/context/AdminContext";
 
-function App() {
+function AppContent() {
+  const { initialized } = useKeycloak();
+
+  if (!initialized) {
+    return <LoadingScreen />;
+  }
+
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <AuthProvider>
         <ReservaProvider>
           <BrowserRouter>
             <Routes>
-              {/* Public route */}
-              <Route path="/login" element={<Login />} />
-
               {/* Protected Routes */}
               <Route element={<ProtectedRoute />}>
                 <Route element={<MainLayout />}>
@@ -55,6 +61,14 @@ function App() {
         </ReservaProvider>
       </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+function App() {
+  return (
+    <ReactKeycloakProvider authClient={keycloak}>
+      <AppContent />
+    </ReactKeycloakProvider>
   );
 }
 

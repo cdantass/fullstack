@@ -1,20 +1,20 @@
-import { type ReactNode } from "react";import { Navigate } from "react-router-dom";
-import { useAuth } from "../pages/context/AdminContext";
+import React, { type ReactNode } from "react";
+import { Navigate } from "react-router-dom";
+import { useKeycloak } from "@react-keycloak/web";
+import { LoadingScreen } from "./LoadingScreen";
 
 type AdminRouteProps = {
   children: ReactNode;
 };
 
 const AdminRoute = ({ children }: AdminRouteProps) => {
-  const { user, loading } = useAuth();
+  const { keycloak, initialized } = useKeycloak();
 
-  console.log("AdminRoute -> loading:", loading, "user:", user);
-
-  if (loading) {
-    return <div>Loading...</div>;
+  if (!initialized) {
+    return <LoadingScreen />;
   }
 
-  if (!user || user.usertype !== "gestor") {
+  if (!keycloak.authenticated || !keycloak.hasRealmRole("gestor")) {
     return <Navigate to="/" replace />;
   }
 

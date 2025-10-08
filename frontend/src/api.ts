@@ -1,26 +1,18 @@
 import axios from "axios";
-import { ACCESS_TOKEN } from "@/constants";
+import keycloak from "./keycloak";
 
-console.log(">>>> Módulo api.ts foi carregado (versão de debug)");
-
-const baseURL = import.meta.env.VITE_API_URL || "http://localhost";
+const apiUrl = "/choreo-apis/awbo/backend/rest-api-be2/v1.0";
 
 const api = axios.create({
-  baseURL: `${baseURL}/api`,
+  baseURL: import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : apiUrl,
+  withCredentials: true,
 });
 
 api.interceptors.request.use(
   (config) => {
-    console.log(">>>> Interceptor do Axios ativado para:", config.url);
-    const token = localStorage.getItem(ACCESS_TOKEN);
-
-    if (token) {
-      console.log(">>>> Token encontrado:", token.substring(0, 15) + "...");
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.warn(">>>> AVISO: Nenhum token encontrado com a chave:", ACCESS_TOKEN);
+    if (keycloak.authenticated) {
+      config.headers.Authorization = `Bearer ${keycloak.token}`;
     }
-    
     return config;
   },
   (error) => {
@@ -28,4 +20,4 @@ api.interceptors.request.use(
   }
 );
 
-export { api };
+export default api;

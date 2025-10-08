@@ -9,84 +9,53 @@ import {
   useCallback,
   useMemo,
 } from "react";
-import { ACCESS_TOKEN, REFRESH_TOKEN } from "@/constants";
+import { useKeycloak } from "@react-keycloak/web";
 
 type User = {
-  id: number;
+  id: string;
   name: string;
   email: string;
-  usertype: "gestor" | "user";
+  usertype: "gestor" | "user"; //mudar role
 };
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  authorizeUser: (access: string, refresh: string) => Promise<void>;
-  setUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { keycloak, initialized } = useKeycloak();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const fetchUserData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem(ACCESS_TOKEN);
-      if (!token) {
-        setUser(null);
-        return;
-      }
-
-      const response = await fetch("http://localhost/api/me/", {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch user: ${response.status}`);
-      }
-
-      const data = await response.json();
+    if (keycloak && keycloak.authenticated) {
+      const profile = await keycloak.loadUserProfile();
       const mappedUser: User = {
-        id: data.id,
-        name: data.username,
-        email: data.email,
-        usertype: data.is_gestor ? "gestor" : "user",
+        id: profile.id ?? "",
+        name: `${profile.firstName} ${profile.lastName}`.trim(),
+        email: profile.email ?? "",
+        usertype: keycloak.hasRealmRole("gestor") ? "gestor" : "user", //mudar role
       };
       setUser(mappedUser);
-    } catch (error) {
-      console.error("Auth Error:", error);
+    } else {
       setUser(null);
-      localStorage.removeItem(ACCESS_TOKEN);
-      localStorage.removeItem(REFRESH_TOKEN);
-    } finally {
-      setLoading(false);
     }
-  }, []);
-
-  const authorizeUser = async (accessToken: string, refreshToken: string) => {
-    localStorage.setItem(ACCESS_TOKEN, accessToken);
-    localStorage.setItem(REFRESH_TOKEN, refreshToken);
-    await fetchUserData();
-  };
+  }, [keycloak]);
 
   useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
+    if (initialized) {
+      fetchUserData();
+    }
+  }, [initialized, fetchUserData]);
 
   const value = useMemo(
     () => ({
       user,
-      loading,
-      authorizeUser,
-      setUser,
+      loading: !initialized,
     }),
-    [user, loading]
+    [user, initialized]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

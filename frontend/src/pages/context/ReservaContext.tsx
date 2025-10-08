@@ -1,4 +1,13 @@
-import React, { createContext, useContext, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
+import { toast } from "sonner";
+import api from "@/api";
+
 export type Reserva = {
   id: number;
   unidade: string;
@@ -29,19 +38,84 @@ type AddReservaPayload = Omit<Reserva, ""> & {
 
 type ReservaContextType = {
   reservas: Reserva[];
+  loading: boolean;
+  fetchReservas: () => Promise<void>;
   addReserva: (r: AddReservaPayload) => void;
   updateReserva: (id: number, updates: Partial<Reserva>) => void;
-  addTeste: () => void;
 };
 
 const ReservaContext = createContext<ReservaContextType | undefined>(undefined);
 
-export const ReservaProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+export const ReservaProvider = ({ children }: { children: ReactNode }) => {
   const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const fetchReservas = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get("/api/chamados/");
+      const data: any[] = response.data;
+
+      const mappedReservas = data.map((item: any): Reserva => {
+        const dataCriacao = item.data_criacao
+          ? new Date(item.data_criacao)
+          : null;
+        const dataAutorizacao = item.data_autorizacao
+          ? new Date(item.data_autorizacao)
+          : null;
+        return {
+          id: item.id,
+          solicitante: item.solicitante,
+          unidade: "Unidade TESTE", // Placeholder
+          municipio: item.municipio,
+          data_saida: item.data_saida,
+          horario_saida: item.horario_saida?.slice(0, 5) || "00:00",
+          data_retorno: item.data_retorno,
+          horario_retorno: item.horario_retorno?.slice(0, 5) || "00:00",
+          passageiros: [
+            item.passageiro1,
+            item.passageiro2,
+            item.passageiro3,
+            item.passageiro4,
+          ].filter(Boolean),
+          paradas: item.paradas.map((p: any) => p.local),
+          obsSolicitante: item.observacao,
+          obsAdmin: item.observacao_autorizador,
+          status:
+            item.status?.toLowerCase() === "aprovado"
+              ? "Aprovado"
+              : item.status?.toLowerCase() === "recusado"
+              ? "Negado"
+              : "Pendente",
+          motorista: item.motorista_designado?.id ?? item.motorista_designado,
+          veiculo: item.veiculo_designado?.id ?? item.veiculo_designado,
+          data_solicitacao: dataCriacao
+            ? dataCriacao.toISOString().split("T")[0]
+            : "",
+          horario_solicitacao: dataCriacao
+            ? `${String(dataCriacao.getHours()).padStart(2, "0")}:${String(
+                dataCriacao.getMinutes()
+              ).padStart(2, "0")}`
+            : "",
+          autorizador: item.autorizador,
+          data_autorizacao: dataAutorizacao
+            ? dataAutorizacao.toISOString().split("T")[0]
+            : undefined,
+          horario_autorizacao: dataAutorizacao
+            ? `${String(dataAutorizacao.getHours()).padStart(2, "0")}:${String(
+                dataAutorizacao.getMinutes()
+              ).padStart(2, "0")}`
+            : undefined,
+        };
+      });
+      setReservas(mappedReservas);
+    } catch (error) {
+      console.error(error);
+      toast.error("Falha ao buscar os dados das reservas.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const addReserva = (reserva: AddReservaPayload) => {
     const now = new Date();
@@ -72,11 +146,10 @@ export const ReservaProvider = ({
       prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
     );
   };
-  const addTeste = () => {};
 
   return (
     <ReservaContext.Provider
-      value={{ reservas, addReserva, updateReserva, addTeste }}
+      value={{ reservas, loading, fetchReservas, addReserva, updateReserva }}
     >
       {children}
     </ReservaContext.Provider>

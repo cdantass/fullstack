@@ -1,11 +1,12 @@
 import { LogOut } from "lucide-react";
-import { ACCESS_TOKEN } from "../constants";
 import { Button } from "./ui/button";
+import { useKeycloak } from "@react-keycloak/web";
 
 const LogoutButton = () => {
+  const { keycloak } = useKeycloak();
+
   const handleLogout = () => {
-    localStorage.removeItem(ACCESS_TOKEN);
-    window.location.href = "/login";
+    keycloak.logout({ redirectUri: window.location.origin });
   };
 
   return (

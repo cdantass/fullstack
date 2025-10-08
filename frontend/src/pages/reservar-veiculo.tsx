@@ -25,15 +25,13 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Loader2Icon, PlusCircleIcon, X } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/api";
+import api from "@/api";
 
 type FormErrors = {
   [key: string]: boolean;
 };
 
 export default function ReservaPage() {
-  useReservas();
-
   // --- FORM STATE ---
   const [municipios, setMunicipios] = useState<{ id: number; nome: string }[]>(
     []
@@ -43,8 +41,8 @@ export default function ReservaPage() {
   const [parada, setParada] = useState("");
   const [passageiros, setPassageiros] = useState<string[]>([]);
   const [passageiro, setPassageiro] = useState("");
-  const [dataSaida, setDataSaida] = useState<Date>(new Date());
-  const [dataRetorno, setDataRetorno] = useState<Date>(new Date());
+  const [dataSaida, setDataSaida] = useState<Date | undefined>(new Date());
+  const [dataRetorno, setDataRetorno] = useState<Date | undefined>(new Date());
   const [horarioSaida, setHorarioSaida] = useState("");
   const [horarioRetorno, setHorarioRetorno] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -54,7 +52,7 @@ export default function ReservaPage() {
   useEffect(() => {
     const fetchMunicipios = async () => {
       try {
-        const res = await api.get("/municipios/");
+        const res = await api.get("/api/municipios/");
         setMunicipios(res.data);
         if (res.data.length > 0) {
           setMunicipio(String(res.data[0].id));
@@ -74,9 +72,6 @@ export default function ReservaPage() {
       setErrors((prev) => ({ ...prev, parada: false, paradas: false }));
     } else {
       setErrors((prev) => ({ ...prev, parada: true }));
-      setTimeout(() => {
-        setErrors((prev) => ({ ...prev, parada: false }));
-      }, 4000);
     }
   };
 
@@ -91,9 +86,6 @@ export default function ReservaPage() {
       setErrors((prev) => ({ ...prev, passageiro: false, passageiros: false }));
     } else {
       setErrors((prev) => ({ ...prev, passageiro: true }));
-      setTimeout(() => {
-        setErrors((prev) => ({ ...prev, passageiro: false }));
-      }, 3000);
     }
   };
 
@@ -111,22 +103,27 @@ export default function ReservaPage() {
     setErrors({});
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const validateForm = () => {
     const newErrors: FormErrors = {};
     if (!municipio) newErrors.municipio = true;
     if (paradas.length === 0) newErrors.paradas = true;
     if (passageiros.length === 0) newErrors.passageiros = true;
+    if (!dataSaida) newErrors.dataSaida = true;
+    if (!dataRetorno) newErrors.dataRetorno = true;
     if (!horarioSaida) newErrors.horarioSaida = true;
     if (!horarioRetorno) newErrors.horarioRetorno = true;
+    if (dataRetorno && dataSaida && dataRetorno < dataSaida) {
+      newErrors.dataRetorno = true;
+      toast.error("A data de retorno não pode ser anterior à data de saída.");
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) {
       toast.error("Por favor, preencha todos os campos destacados.");
-      setTimeout(() => {
-        setErrors({});
-      }, 2000);
       return;
     }
 
@@ -135,9 +132,9 @@ export default function ReservaPage() {
     const formatDate = (date: Date) => date.toISOString().split("T")[0];
 
     const payload = {
-      data_saida: formatDate(dataSaida),
+      data_saida: formatDate(dataSaida!),
       horario_saida: horarioSaida,
-      data_retorno: formatDate(dataRetorno),
+      data_retorno: formatDate(dataRetorno!),
       horario_retorno: horarioRetorno,
       passageiro1: passageiros[0] || "",
       passageiro2: passageiros[1] || "",
@@ -149,7 +146,7 @@ export default function ReservaPage() {
     };
 
     try {
-      await api.post("/chamados/", payload);
+      await api.post("/api/chamados/", payload);
       toast.success("Solicitação de reserva enviada com sucesso!");
       resetForm();
     } catch (err: any) {
@@ -181,8 +178,8 @@ export default function ReservaPage() {
               }}
             >
               <SelectTrigger
-                className={`bg-white ring-2 ring-transparent transition-all duration-500 ${
-                  errors.municipio ? "ring-red-500 " : ""
+                className={`bg-white ${
+                  errors.municipio ? "ring-2 ring-red-500" : ""
                 }`}
               >
                 <SelectValue placeholder="Selecione o município" />
@@ -196,29 +193,21 @@ export default function ReservaPage() {
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
             <Label>Paradas</Label>
-            <div
-              className="flex gap-2"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddParada();
-                }
-              }}
-            >
+            <div className="flex gap-2">
               <Input
-                className={`bg-white ring-2 ring-transparent transition-all duration-500 ${
-                  errors.parada || errors.paradas ? "ring-red-500" : ""
+                className={`bg-white ${
+                  errors.parada || errors.paradas ? "ring-2 ring-red-500" : ""
                 }`}
                 value={parada}
-                onChange={(e) => {
-                  setParada(e.target.value);
-                  setErrors((prev) => ({
-                    ...prev,
-                    parada: false,
-                    paradas: false,
-                  }));
+                onChange={(e) => setParada(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddParada();
+                  }
                 }}
                 placeholder="Ex: SergipeTec"
               />
@@ -228,18 +217,14 @@ export default function ReservaPage() {
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {paradas.map((p, i) => (
-                <Badge
-                  key={i}
-                  variant="outline"
-                  className="flex items-center gap-1"
-                >
-                  <span className="truncate">{p}</span>
+                <Badge key={i} variant="secondary">
+                  {p}
                   <button
                     type="button"
-                    className="text-muted-foreground hover:text-destructive"
                     onClick={() =>
                       setParadas(paradas.filter((_, idx) => idx !== i))
                     }
+                    className="ml-2"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -247,29 +232,23 @@ export default function ReservaPage() {
               ))}
             </div>
           </div>
+
           <div className="space-y-2">
             <Label>Passageiros</Label>
-            <div
-              className="flex gap-2"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddPassageiro();
-                }
-              }}
-            >
+            <div className="flex gap-2">
               <Input
-                className={`bg-white ring-2 ring-transparent transition-all duration-500 ${
-                  errors.passageiro || errors.passageiros ? "ring-red-500" : ""
+                className={`bg-white ${
+                  errors.passageiro || errors.passageiros
+                    ? "ring-2 ring-red-500"
+                    : ""
                 }`}
                 value={passageiro}
-                onChange={(e) => {
-                  setPassageiro(e.target.value);
-                  setErrors((prev) => ({
-                    ...prev,
-                    passageiro: false,
-                    passageiros: false,
-                  }));
+                onChange={(e) => setPassageiro(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddPassageiro();
+                  }
                 }}
                 placeholder="Ex: Alberto dos Santos Carvalho"
               />
@@ -279,25 +258,22 @@ export default function ReservaPage() {
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {passageiros.map((p, i) => (
-                <Badge
-                  key={i}
-                  variant="outline"
-                  className="flex items-center gap-1"
-                >
-                  <span className="truncate">{p}</span>
+                <Badge key={i} variant="secondary">
+                  {p}
                   <button
                     type="button"
-                    className="text-muted-foreground hover:text-destructive"
                     onClick={() =>
                       setPassageiros(passageiros.filter((_, idx) => idx !== i))
                     }
+                    className="ml-2"
                   >
-                    <X className="w-4" />
+                    <X className="h-4 w-4" />
                   </button>
                 </Badge>
               ))}
             </div>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Data da saída</Label>
@@ -305,7 +281,9 @@ export default function ReservaPage() {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-start text-left font-normal"
+                    className={`w-full justify-start text-left font-normal ${
+                      errors.dataSaida ? "ring-2 ring-red-500" : ""
+                    }`}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dataSaida ? (
@@ -319,10 +297,7 @@ export default function ReservaPage() {
                   <Calendar
                     mode="single"
                     selected={dataSaida}
-                    onSelect={(d) => {
-                      if (d) setDataSaida(d);
-                      if (d && dataRetorno < d) setDataRetorno(d);
-                    }}
+                    onSelect={setDataSaida}
                     locale={ptBR}
                   />
                 </PopoverContent>
@@ -334,7 +309,9 @@ export default function ReservaPage() {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-start text-left font-normal"
+                    className={`w-full justify-start text-left font-normal ${
+                      errors.dataRetorno ? "ring-2 ring-red-500" : ""
+                    }`}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dataRetorno ? (
@@ -348,26 +325,21 @@ export default function ReservaPage() {
                   <Calendar
                     mode="single"
                     selected={dataRetorno}
-                    onSelect={(d) => d && setDataRetorno(d)}
+                    onSelect={setDataRetorno}
                     locale={ptBR}
-                    disabled={(date) => {
-                      // Create a copy of the start date and set its time to midnight
-                      // This ensures we only compare the date part, not the time
-                      const startDate = new Date(dataSaida);
-                      startDate.setHours(0, 0, 0, 0);
-                      return date < startDate;
-                    }}
+                    disabled={{ before: dataSaida || new Date() }}
                   />
                 </PopoverContent>
               </Popover>
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="saida">Horário de saída</Label>
               <Input
-                className={`bg-white ring-2 ring-transparent transition-all duration-500 ${
-                  errors.horarioSaida ? "ring-red-500" : ""
+                className={`bg-white ${
+                  errors.horarioSaida ? "ring-2 ring-red-500" : ""
                 }`}
                 type="time"
                 id="saida"
@@ -381,8 +353,8 @@ export default function ReservaPage() {
             <div className="space-y-2">
               <Label htmlFor="retorno">Horário de retorno</Label>
               <Input
-                className={`bg-white ring-2 ring-transparent transition-all duration-500 ${
-                  errors.horarioRetorno ? "ring-red-500" : ""
+                className={`bg-white ${
+                  errors.horarioRetorno ? "ring-2 ring-red-500" : ""
                 }`}
                 type="time"
                 id="retorno"
@@ -394,6 +366,7 @@ export default function ReservaPage() {
               />
             </div>
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="obs">Observação</Label>
             <Textarea
@@ -404,6 +377,7 @@ export default function ReservaPage() {
               onChange={(e) => setObservacao(e.target.value)}
             />
           </div>
+
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
               <>

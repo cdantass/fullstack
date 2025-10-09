@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useReservas } from "@/pages/context/ReservaContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -25,8 +24,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Loader2Icon, PlusCircleIcon, X } from "lucide-react";
 import { toast } from "sonner";
-import api from "@/api";
-
+import { api } from "@/api";
 type FormErrors = {
   [key: string]: boolean;
 };

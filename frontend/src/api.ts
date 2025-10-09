@@ -1,16 +1,15 @@
 import axios from "axios";
 import keycloak from "./keycloak";
 
-const apiUrl = "/choreo-apis/awbo/backend/rest-api-be2/v1.0";
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : apiUrl,
-  withCredentials: true,
+  baseURL: `${baseURL}/api`,
 });
 
 api.interceptors.request.use(
   (config) => {
-    if (keycloak.authenticated) {
+    if (keycloak.authenticated && keycloak.token) {
       config.headers.Authorization = `Bearer ${keycloak.token}`;
     }
     return config;
@@ -20,4 +19,4 @@ api.interceptors.request.use(
   }
 );
 
-export default api;
+export { api };

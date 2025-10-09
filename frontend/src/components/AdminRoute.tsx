@@ -1,4 +1,4 @@
-import React, { type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useKeycloak } from "@react-keycloak/web";
 import { LoadingScreen } from "./LoadingScreen";

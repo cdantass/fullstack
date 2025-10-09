@@ -6,6 +6,7 @@ router = DefaultRouter()
 router.register(r'veiculos', views.VeiculoViewSet, basename='veiculo')
 router.register(r'motoristas', views.MotoristaViewSet, basename='motorista')
 router.register(r'chamados', views.ChamadoViewSet, basename='chamado')
+
 urlpatterns = [
     path('', include(router.urls)),
     path('me/', views.UserProfileView.as_view(), name='user-profile'),

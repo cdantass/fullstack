@@ -1,4 +1,3 @@
-// src/components/ReservaCard.tsx
 import {
   Car,
   Users,
@@ -12,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { type Reserva } from "@/pages/context/ReservaContext";
 import { formatDateTime } from "@/lib/utils";
-import { cn } from "@/lib/utils"; // Import cn utility
+import { cn } from "@/lib/utils";
 
 interface ReservaCardProps {
   reserva: Reserva;
@@ -20,7 +19,6 @@ interface ReservaCardProps {
   motoristaMap: Record<number, string>;
 }
 
-// Helper function to get badge classes
 const getStatusBadgeClasses = (status: Reserva["status"]) => {
   switch (status) {
     case "Aprovado":
@@ -28,7 +26,7 @@ const getStatusBadgeClasses = (status: Reserva["status"]) => {
     case "Negado":
       return "bg-red-100 text-red-800 hover:bg-red-200";
     case "Pendente":
-      return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"; // Changed to yellow for consistency
+      return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -127,7 +125,6 @@ export function ReservaCard({
             </div>
           )}
         </div>
-        {/* Status Badge with correct styling */}
         <div className="flex items-center gap-2">
           <span className="font-medium">Status:</span>
           <Badge className={cn(getStatusBadgeClasses(reserva.status))}>

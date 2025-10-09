@@ -5,16 +5,16 @@ import keycloak from "./keycloak";
 
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
-import AutorizarPage from "./pages/autorizar-reserva";
-import ConsultarReservaPage from "./pages/consultar-reserva";
-import ReservaPage from "./pages/reservar-veiculo";
+import AutorizarPage from "./pages/AutorizarReserva";
+import ConsultarReservaPage from "./pages/ConsultarReserva";
+import ReservaPage from "./pages/ReservarVeiculo";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { MainLayout } from "./components/MainLayout";
 import { LoadingScreen } from "./components/LoadingScreen";
 
-import { ThemeProvider } from "./components/theme-provider";
+import { ThemeProvider } from "./components/ThemeProvider";
 import { ReservaProvider } from "./pages/context/ReservaContext";
 import { AuthProvider } from "./pages/context/AdminContext";
 

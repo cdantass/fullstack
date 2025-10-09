@@ -3,14 +3,14 @@
 import * as React from "react";
 import { Car } from "lucide-react";
 
-import { NavMain } from "@/components/nav-main";
+import { NavMain } from "@/components/NavMain";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { ModeToggle } from "./mode-toggle";
+import { ModeToggle } from "./ModeToggle";
 import LogoutButton from "./logout";
 import { useAuth } from "@/pages/context/AdminContext";
 

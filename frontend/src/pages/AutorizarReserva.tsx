@@ -53,7 +53,7 @@ export default function AutorizarPage() {
 
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [obs, setObs] = React.useState<Record<number, string>>({});
-  const [filter, setFilter] = React.useState<string | null>("Pendente");
+  const [filter, setFilter] = React.useState<string | null>(null);
   const [motoristas, setMotoristas] = React.useState<Motorista[]>([]);
   const [veiculos, setVeiculos] = React.useState<Veiculo[]>([]);
   const [selectedMotoristas, setSelectedMotoristas] = React.useState<

@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar } from "@/components/AppSideBar";
 import { TopBar } from "./TopBar";
 import { Toaster } from "@/components/ui/sonner";
 

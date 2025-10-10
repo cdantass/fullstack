@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "./ModeToggle";
 import LogoutButton from "./logout";
-import { useAuth } from "@/pages/context/AdminContext";
+import { useAuth } from "../pages/context/AdminContext";
 
 export function AppSidebar({}: React.ComponentProps<typeof Sidebar>) {
   const { user, loading } = useAuth();

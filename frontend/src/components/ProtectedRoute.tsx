@@ -1,20 +1,15 @@
-import { useKeycloak } from "@react-keycloak/web";
-import { Outlet } from "react-router-dom";
-import { LoadingScreen } from "./LoadingScreen";
+import { useKeycloak } from '@react-keycloak/web';
+import { Navigate } from 'react-router-dom';
+import React from 'react';
 
-function ProtectedRoute() {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { keycloak, initialized } = useKeycloak();
 
   if (!initialized) {
-    return <LoadingScreen />;
+    return <div>A carregar...</div>;
   }
 
-  if (!keycloak.authenticated) {
-    keycloak.login({ redirectUri: window.location.origin });
-    return <LoadingScreen />;
-  }
-
-  return <Outlet />;
+  return keycloak.authenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
 export default ProtectedRoute;

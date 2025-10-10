@@ -1,10 +1,9 @@
-import { Outlet } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSideBar";
 import { TopBar } from "./TopBar";
 import { Toaster } from "@/components/ui/sonner";
 
-export function MainLayout() {
+export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
@@ -13,7 +12,7 @@ export function MainLayout() {
           <TopBar />
           <main className="flex-1">
             <Toaster richColors position="top-right" />
-            <Outlet />
+            {children}
           </main>
         </div>
       </div>

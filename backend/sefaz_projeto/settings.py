@@ -34,7 +34,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1','backend']
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'drf_keycloak_auth.authentication.KeycloakAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -226,3 +226,12 @@ JAZZMIN_UI_TWEAKS = {
     },
 }
 
+
+KEYCLOAK_CONFIG = {
+    'KEYCLOAK_SERVER_URL': os.getenv('KEYCLOAK_INTERNAL_URL', 'http://keycloak:8080/'),
+    'KEYCLOAK_REALM': 'sefaz-realm',
+    'KEYCLOAK_CLIENT_ID': 'sefaz-backend',
+    'KEYCLOAK_CLIENT_SECRET_KEY': os.getenv('0MT0W1S4tLCtKa9gRdEs7IDX4dstghOl'),
+    'KEYCLOAK_CLIENT_PUBLIC_KEY': """Public key
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvm09kfrnBQyDC7k80GPyNPkh4uItJBAcMio6KANfch98cNkpK20dnETybtZ6Hc4UKkCAbM39eJrRUOx6W1mf5lFDC9ALkhn5NV+4fmBC1BU1yZ60HPxycTr03rCdQ7QM1qZJ356gGG4KPvyTo4s805MpCOCvKjCKqySCp+RowPAvFmnufWOeZoxx8OXkBSbmU5nMevyjVpWrWgrszDf1vng0qWm5XBfdSYs4NTsgeZ3Egig4cDeCIXA6y8W+Qkni90/h3Qi9Mt6Ty6QZsV0KbYtk0ew/sPeV3Gi5e/e7MVJR5phRkGOM7Ce2yKHzXlTb15PvkmCAaDUyPsdmCdmQSwIDAQAB""",
+}

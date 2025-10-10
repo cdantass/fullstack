@@ -1,5 +1,3 @@
-"use client";
-
 import {
   createContext,
   useContext,
@@ -15,7 +13,7 @@ type User = {
   id: string;
   name: string;
   email: string;
-  usertype: "gestor" | "user"; //mudar role
+  usertype: "gestor" | "user";
 };
 
 interface AuthContextType {
@@ -30,15 +28,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   const fetchUserData = useCallback(async () => {
-    if (keycloak && keycloak.authenticated) {
-      const profile = await keycloak.loadUserProfile();
-      const mappedUser: User = {
-        id: profile.id ?? "",
-        name: `${profile.firstName} ${profile.lastName}`.trim(),
-        email: profile.email ?? "",
-        usertype: keycloak.hasRealmRole("gestor") ? "gestor" : "user", //mudar role
-      };
-      setUser(mappedUser);
+    if (keycloak?.authenticated) {
+      try {
+        const profile = await keycloak.loadUserProfile();
+        const mappedUser: User = {
+          id: profile.id ?? "",
+          name:
+            `${profile.firstName} ${profile.lastName}`.trim() ||
+            profile.username ||
+            "",
+          email: profile.email ?? "",
+          usertype: keycloak.hasRealmRole("gestor") ? "gestor" : "user",
+        };
+        setUser(mappedUser);
+      } catch (error) {
+        console.error("Failed to load user profile:", error);
+        setUser(null);
+      }
     } else {
       setUser(null);
     }
@@ -48,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (initialized) {
       fetchUserData();
     }
-  }, [initialized, fetchUserData]);
+  }, [initialized, fetchUserData, keycloak.token]);
 
   const value = useMemo(
     () => ({

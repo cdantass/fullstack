@@ -4,7 +4,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { api } from "@/api";
 import { useReservas, type Reserva } from "@/pages/context/ReservaContext";
-import { useAuth } from "@/pages/context/AdminContext";
+import { useAuth } from "../pages/context/AdminContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,14 @@ const getStatusBadgeClasses = (status: Reserva["status"]) => {
 
 export default function ConsultarReservaPage() {
   const { reservas, fetchReservas } = useReservas();
-  const { user: authUser } = useAuth();
+const { user: authUser, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p>A carregar as suas reservas...</p>
+      </div>
+    );
+  }
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [filter, setFilter] = React.useState<string | null>(null);
   const [motoristas, setMotoristas] = React.useState<Motorista[]>([]);

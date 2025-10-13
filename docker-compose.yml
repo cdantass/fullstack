@@ -1,57 +1,10 @@
 services:
-  backend:
-    build:
-      context: ./backend
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py collectstatic --no-input &&
-             gunicorn sefaz_projeto.wsgi:application --bind 0.0.0.0:8000 --workers 4"
-    env_file:
-      - .env
-    volumes:
-      - staticfiles_volume:/app/staticfiles
-    depends_on:
-      - db
-      - redis
-    restart: always
-    networks:
-      - backend-net
-
-  nginx:
-    build:
-      context: .
-      dockerfile: ./backend/nginx/Dockerfile
-    container_name: nginx_sefaz
-    volumes:
-      - staticfiles_volume:/app/staticfiles
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-    restart: always
-    networks:
-      - frontend-net
-      - backend-net
-
-  celery:
-    build:
-      context: ./backend
-    command: celery -A sefaz_projeto worker -l info
-    env_file:
-      - .env
-    depends_on:
-      - backend
-      - redis
-    restart: always
-    networks:
-      - backend-net
-
   db:
     image: postgres:16
-    container_name: db_sefaz
+    container_name: sefaz_db
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./backend/scripts:/docker-entrypoint-initdb.d/
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -67,13 +20,13 @@ services:
     container_name: keycloak_sefaz
     command: start-dev
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_DB: postgres
       KC_DB_URL_HOST: db
-      KC_DB_URL_DATABASE: keycloak
-      KC_DB_USERNAME: ${DB_USER}
-      KC_DB_PASSWORD: ${DB_PASSWORD}
+      KC_DB_URL_DATABASE: keycloak_db
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "8080:8080"
     depends_on:
@@ -82,26 +35,80 @@ services:
     networks:
       - backend-net
 
+  backend:
+    build: ./backend
+    container_name: sefaz_backend
+    command: gunicorn sefaz_projeto.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+      - staticfiles_volume:/app/staticfiles
+    expose:
+      - 8000
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - keycloak
+    restart: always
+    networks:
+      - backend-net
+
+  celery:
+    build: ./backend
+    container_name: sefaz_celery
+    command: celery -A sefaz_projeto worker -l info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - backend
+    restart: always
+    networks:
+      - backend-net
+
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: redis_sefaz
     restart: always
     networks:
       - backend-net
 
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+        - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
+        - VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM}
+        - VITE_KEYCLOAK_CLIENT=${VITE_KEYCLOAK_CLIENT}
+    container_name: nginx_sefaz
+    ports:
+      - "80:80"
+    volumes:
+      - staticfiles_volume:/app/backend/staticfiles
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - frontend-net
+      - backend-net
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin_sefaz
-    restart: always
-    ports:
-      - "5050:80"
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - db
+    restart: always
     networks:
       - backend-net
 

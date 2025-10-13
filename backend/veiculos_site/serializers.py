@@ -162,4 +162,4 @@ class UserProfileSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_is_gestor(self, obj):
-        return obj.groups.filter(name='Gestores').exists() or obj.is_superuser
+        return obj.groups.filter(name='Gestor').exists() or obj.is_superuser

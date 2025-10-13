@@ -51,7 +51,7 @@ class ChamadoViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_superuser or user.groups.filter(name='Gestores').exists():
+        if user.is_superuser or user.groups.filter(name='Gestor').exists():
             return Chamado.objects.all().order_by('-data_criacao')
         return Chamado.objects.filter(solicitante=user).order_by('-data_criacao')
 
@@ -61,7 +61,7 @@ class ChamadoViewSet(viewsets.ModelViewSet):
             return ChamadoCreateSerializer
         if self.action in ['update', 'partial_update']:
             return ChamadoGestorSerializer
-        if user.is_superuser or user.groups.filter(name='Gestores').exists():
+        if user.is_superuser or user.groups.filter(name='Gestor').exists():
             return ChamadoGestorSerializer
         return ChamadoSerializer
 

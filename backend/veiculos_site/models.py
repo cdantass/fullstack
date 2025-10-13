@@ -81,7 +81,7 @@ class Chamado(models.Model):
         related_name="chamados_autorizados", 
         null=True, 
         blank=True,
-        limit_choices_to={'groups__name': 'Gestores'}
+        limit_choices_to={'groups__name': 'Gestor'}
     )
     
     observacao_autorizador = models.TextField(blank=True)

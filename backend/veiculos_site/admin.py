@@ -59,7 +59,7 @@ class ChamadoAdmin(admin.ModelAdmin):
         if not obj.pk:
             obj.solicitante = request.user
         
-        if change and 'status' in form.changed_data and request.user.groups.filter(name='Gestores').exists():
+        if change and 'status' in form.changed_data and request.user.groups.filter(name='Gestor').exists():
             obj.autorizador = request.user
             obj.data_autorizacao = timezone.now()
             

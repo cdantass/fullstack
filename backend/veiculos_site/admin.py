@@ -27,9 +27,9 @@ class ParadaAdmin(admin.ModelAdmin):
 
 class ChamadoAdmin(admin.ModelAdmin):
     inlines = [ParadaInline]
-    list_display = ('id', 'solicitante', 'data_saida', 'itinerario', 'municipio', 'status_colorido', 'autorizador')
+    list_display = ('id', 'solicitante_id', 'data_saida', 'itinerario', 'municipio', 'status_colorido', 'autorizador')
     list_filter = ('status', 'data_saida', 'municipio')
-    autocomplete_fields = ['solicitante', 'municipio', 'veiculo_designado', 'motorista_designado', 'autorizador']
+    autocomplete_fields = ['municipio', 'veiculo_designado', 'motorista_designado', 'autorizador']
     search_fields = ('id', 'solicitante__username', 'passageiro1', 'paradas__local')
 
     @admin.display(description='Status')

@@ -81,7 +81,7 @@ def test_aprovar_chamado_com_conflito_de_horario_falha():
 
     client = APIClient()
     client.force_authenticate(user=gestor)
-    url = f'/api/chamados/{chamado_conflituante.id}/'
+    url = f'/chamados/{chamado_conflituante.id}/'
     data_aprovacao = {
         'status': 'aprovado',
         'motorista_id': motorista.id,

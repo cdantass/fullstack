@@ -3,6 +3,7 @@ from django.utils import timezone
 from rest_framework import generics, status, viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from drf_keycloak_auth.permissions import HasRole 
 
 from .models import Veiculo, Motorista, Chamado, Municipio, Parada
 from .serializers import (
@@ -46,38 +47,65 @@ class MotoristaViewSet(viewsets.ModelViewSet):
 
 
 class ChamadoViewSet(viewsets.ModelViewSet):
-    queryset = Chamado.objects.all().order_by('-data_criacao')
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_superuser or user.groups.filter(name='Gestor').exists():
-            return Chamado.objects.all().order_by('-data_criacao')
-        return Chamado.objects.filter(solicitante=user).order_by('-data_criacao')
-
-    def get_serializer_class(self):
-        user = self.request.user
-        if self.action == 'create':
-            return ChamadoCreateSerializer
-        if self.action in ['update', 'partial_update']:
-            return ChamadoGestorSerializer
-        if user.is_superuser or user.groups.filter(name='Gestor').exists():
-            return ChamadoGestorSerializer
-        return ChamadoSerializer
-
+    """
+    ViewSet para gerir os Chamados com lógica de permissão baseada em roles do Keycloak.
+    """
+    
     def get_permissions(self):
+        """
+        Define as permissões com base na ação que está a ser executada.
+        """
         if self.action in ['update', 'partial_update', 'destroy']:
-            self.permission_classes = [IsAuthenticated, IsGestor]
+            self.permission_classes = [IsAuthenticated, HasRole.from_keycloak('access-gestor')]
+        
         else:
             self.permission_classes = [IsAuthenticated]
+        
         return super().get_permissions()
 
+    def get_queryset(self):
+        """
+        Filtra a lista de chamados com base no role do utilizador.
+        """
+        user = self.request.user
+
+        if user.has_role('access-gestor'):
+            return Chamado.objects.all().order_by('-data_criacao')
+        
+        return Chamado.objects.filter(solicitante_id=user.sub).order_by('-data_criacao')
+
+    def get_serializer_class(self):
+        """
+        Seleciona o serializer apropriado com base na ação e no role do utilizador.
+        """
+        user = self.request.user
+
+        if self.action == 'create':
+            return ChamadoCreateSerializer
+        
+        if self.action in ['update', 'partial_update']:
+            return ChamadoGestorSerializer
+        
+        if user.has_role('access-gestor'):
+            return ChamadoGestorSerializer
+        
+        return ChamadoSerializer
+
     def perform_create(self, serializer):
-        serializer.save(solicitante=self.request.user)
+        """
+        Ao criar um chamado, associa automaticamente o ID do utilizador do Keycloak.
+        """
+        # SALVA o ID do Keycloak (user.sub) em vez do objeto user.
+        serializer.save(solicitante_id=self.request.user.sub)
 
     def perform_update(self, serializer):
-        serializer.save(autorizador=self.request.user, data_autorizacao=timezone.now())
-
+        """
+        Ao atualizar um chamado, regista quem foi o gestor que autorizou e a data.
+        """
+        serializer.save(
+            autorizador_id=self.request.user.sub,
+            data_autorizacao=timezone.now()
+        )
 
 class MunicipioListView(generics.ListAPIView):
     queryset = Municipio.objects.all().order_by('nome')

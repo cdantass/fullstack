@@ -69,8 +69,8 @@ const { user: authUser, loading } = useAuth();
     const fetchOptions = async () => {
       try {
         const [mRes, vRes] = await Promise.all([
-          api.get("/api/motoristas/"),
-          api.get("/api/veiculos/"),
+          api.get("/motoristas/"),
+          api.get("/veiculos/"),
         ]);
         setMotoristas(mRes.data);
         setVeiculos(vRes.data);

@@ -50,7 +50,7 @@ export default function ReservaPage() {
   useEffect(() => {
     const fetchMunicipios = async () => {
       try {
-        const res = await api.get("/api/municipios/");
+        const res = await api.get("/municipios/");
         setMunicipios(res.data);
         if (res.data.length > 0) {
           setMunicipio(String(res.data[0].id));
@@ -144,7 +144,7 @@ export default function ReservaPage() {
     };
 
     try {
-      await api.post("/api/chamados/", payload);
+      await api.post("/chamados/", payload);
       toast.success("Solicitação de reserva enviada com sucesso!");
       resetForm();
     } catch (err: any) {

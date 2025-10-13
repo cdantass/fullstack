@@ -68,8 +68,8 @@ export default function AutorizarPage() {
     const fetchOptions = async () => {
       try {
         const [mRes, vRes] = await Promise.all([
-          api.get("/api/motoristas/"),
-          api.get("/api/veiculos/"),
+          api.get("/motoristas/"),
+          api.get("/veiculos/"),
         ]);
         setMotoristas(mRes.data);
         setVeiculos(vRes.data);
@@ -125,7 +125,7 @@ export default function AutorizarPage() {
     };
 
     try {
-      await api.put(`/api/chamados/${id}/`, apiPayload);
+      await api.put(`/chamados/${id}/`, apiPayload);
       updateReserva(id, {
         status: status === "aprovado" ? "Aprovado" : "Negado",
         obsAdmin: obs[id] ?? "",

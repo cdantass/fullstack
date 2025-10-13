@@ -50,10 +50,11 @@ class Parada(models.Model):
         return self.local
 
 class Chamado(models.Model):
-    solicitante = models.ForeignKey(User, on_delete=models.PROTECT, related_name="chamados_criados")
+    solicitante_id = models.CharField(max_length=255) 
+    autorizador_id = models.CharField(max_length=255, null=True, blank=True)
     motorista_designado = models.ForeignKey(Motorista, on_delete=models.SET_NULL, null=True, blank=True)
     veiculo_designado = models.ForeignKey(Veiculo, on_delete=models.SET_NULL, null=True, blank=True)
-    
+
     data_saida = models.DateField()
     horario_saida = models.TimeField()
     data_retorno = models.DateField()

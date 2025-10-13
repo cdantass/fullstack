@@ -53,7 +53,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
   const fetchReservas = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get("/api/chamados/");
+      const response = await api.get("/chamados/");
       const data: any[] = response.data;
 
       const mappedReservas = data.map((item: any): Reserva => {

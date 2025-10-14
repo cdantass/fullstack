@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 User = get_user_model()
 
+
 class Veiculo(models.Model):
     placa = models.CharField(max_length=10, unique=True, verbose_name="Placa")
     modelo = models.CharField(max_length=50, verbose_name="Modelo")

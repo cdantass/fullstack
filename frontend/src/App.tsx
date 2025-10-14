@@ -1,5 +1,5 @@
 import { Routes, Route, Outlet } from "react-router-dom";
-
+import { useKeycloak } from "@react-keycloak/web";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import AutorizarPage from "./pages/AutorizarReserva";
@@ -23,6 +23,10 @@ const ProtectedLayout = () => (
 );
 
 function App() {
+  const { initialized } = useKeycloak();
+  if (!initialized) {
+    return <div>A carregar e a verificar autenticação...</div>;
+  }
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <ReservaProvider>

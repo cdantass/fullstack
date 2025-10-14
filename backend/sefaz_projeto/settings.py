@@ -33,12 +33,13 @@ DEBUG = True
 ALLOWED_HOSTS = ['localhost', '127.0.0.1','backend'] 
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'drf_keycloak.authentication.KeycloakAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'drf_keycloak_auth.authentication.KeycloakAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    ]
+    ),
 }
 
 SPECTACULAR_SETTINGS = {
@@ -231,6 +232,6 @@ DRF_KEYCLOAK_AUTH = {
     'DRF_KEYCLOAK_AUTH_SERVER_URL': 'http://keycloak:8080/',
     'DRF_KEYCLOAK_AUTH_REALM': 'sefaz-realm',
     'DRF_KEYCLOAK_AUTH_CLIENT_ID': 'sefaz-backend',
-    'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': os.getenv('LcpF3i8gVJjrMNjz1KqxZmOARFj6uX1h'),
+    'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': os.getenv('VBCDGo8SxnK6yK4CBjuzFOyRRCbmkhmL'),
     'DRF_KEYCLOAK_AUTH_PUBLIC_KEY': ''
 }

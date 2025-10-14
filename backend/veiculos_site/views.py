@@ -3,7 +3,10 @@ from django.utils import timezone
 from rest_framework import generics, status, viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from drf_keycloak_auth.permissions import HasRole 
+from .permissions import IsGestor
+from rolepermissions.checkers import has_role
+
+
 
 from .models import Veiculo, Motorista, Chamado, Municipio, Parada
 from .serializers import (
@@ -37,18 +40,18 @@ class CreateUserView(generics.CreateAPIView):
 class VeiculoViewSet(viewsets.ModelViewSet):
     queryset = Veiculo.objects.all()
     serializer_class = VeiculoSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsGestor]
 
 
 class MotoristaViewSet(viewsets.ModelViewSet):
     queryset = Motorista.objects.all()
     serializer_class = MotoristaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsGestor]
 
 
 class ChamadoViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para gerir os Chamados com lógica de permissão baseada em roles do Keycloak.
+    ViewSet para gerir os Chamados com a nossa lógica de permissão personalizada.
     """
     
     def get_permissions(self):
@@ -56,7 +59,7 @@ class ChamadoViewSet(viewsets.ModelViewSet):
         Define as permissões com base na ação que está a ser executada.
         """
         if self.action in ['update', 'partial_update', 'destroy']:
-            self.permission_classes = [IsAuthenticated, HasRole.from_keycloak('access-gestor')]
+            self.permission_classes = [IsAuthenticated, IsGestor]
         
         else:
             self.permission_classes = [IsAuthenticated]
@@ -69,7 +72,7 @@ class ChamadoViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
 
-        if user.has_role('access-gestor'):
+        if user.has_role('Gestores'):
             return Chamado.objects.all().order_by('-data_criacao')
         
         return Chamado.objects.filter(solicitante_id=user.sub).order_by('-data_criacao')
@@ -79,23 +82,18 @@ class ChamadoViewSet(viewsets.ModelViewSet):
         Seleciona o serializer apropriado com base na ação e no role do utilizador.
         """
         user = self.request.user
-
         if self.action == 'create':
             return ChamadoCreateSerializer
-        
         if self.action in ['update', 'partial_update']:
             return ChamadoGestorSerializer
-        
-        if user.has_role('access-gestor'):
+        if user.has_role('Gestores'):
             return ChamadoGestorSerializer
-        
         return ChamadoSerializer
 
     def perform_create(self, serializer):
         """
         Ao criar um chamado, associa automaticamente o ID do utilizador do Keycloak.
         """
-        # SALVA o ID do Keycloak (user.sub) em vez do objeto user.
         serializer.save(solicitante_id=self.request.user.sub)
 
     def perform_update(self, serializer):
@@ -107,6 +105,7 @@ class ChamadoViewSet(viewsets.ModelViewSet):
             data_autorizacao=timezone.now()
         )
 
+
 class MunicipioListView(generics.ListAPIView):
     queryset = Municipio.objects.all().order_by('nome')
     serializer_class = MunicipioSerializer
@@ -116,13 +115,13 @@ class MunicipioListView(generics.ListAPIView):
 class MotoristaDisponivelListView(generics.ListAPIView):
     queryset = Motorista.objects.filter(status='disponivel').order_by('nome_motorista')
     serializer_class = MotoristaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsGestor]
 
 
 class VeiculoDisponivelListView(generics.ListAPIView):
     queryset = Veiculo.objects.filter(status='disponivel').order_by('placa')
     serializer_class = VeiculoSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsGestor]
 
 
 class MeusChamadosListView(generics.ListAPIView):
@@ -130,4 +129,4 @@ class MeusChamadosListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Chamado.objects.filter(solicitante=self.request.user).order_by('-data_criacao')
+        return Chamado.objects.filter(solicitante_id=self.request.user).order_by('-data_criacao')

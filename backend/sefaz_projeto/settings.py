@@ -32,9 +32,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1','backend'] 
 
-RREST_FRAMEWORK = {
+REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'drf_keycloak_auth.authentication.KeycloakAuthentication',
+        'drf_keycloak.authentication.KeycloakAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'import_export',
     'django_filters',
     'drf_spectacular',
+    'rolepermissions',
     'veiculos_site',
 ]
 

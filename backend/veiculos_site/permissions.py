@@ -1,7 +1,10 @@
-from rest_framework import permissions
-class IsGestor(permissions.BasePermission):
+from rest_framework.permissions import BasePermission
+from rolepermissions.checkers import has_role
+
+class IsGestor(BasePermission):
     """
-    Permissão customizada para permitir acesso apenas a usuários do grupo 'Gestor'.
+    Permissão personalizada que verifica se o utilizador autenticado
+    tem o role 'access-gestor' no seu token do Keycloak.
     """
     def has_permission(self, request, view):
-        return request.user and request.user.groups.filter(name='Gestor').exists()
+        return request.user.has_role('Gestores')

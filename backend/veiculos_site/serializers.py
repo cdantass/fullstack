@@ -52,8 +52,7 @@ class ParadaSerializer(serializers.ModelSerializer):
         fields = ['local']
 
 class ChamadoSerializer(serializers.ModelSerializer):
-    solicitante = serializers.StringRelatedField(read_only=True)
-    solicitante_email = serializers.EmailField(source='solicitante.email', read_only=True)
+    solicitante_id = serializers.StringRelatedField(read_only=True)
     municipio = serializers.SlugRelatedField(
         queryset=Municipio.objects.all(),
         slug_field='nome',
@@ -62,16 +61,16 @@ class ChamadoSerializer(serializers.ModelSerializer):
     )
     motorista_designado = serializers.StringRelatedField(read_only=True)
     veiculo_designado = serializers.StringRelatedField(read_only=True)
-    autorizador = serializers.StringRelatedField(read_only=True)
+    autorizador_id = serializers.StringRelatedField(read_only=True)
     paradas = ParadaSerializer(many=True, required=False)
 
     class Meta:
         model = Chamado
         fields = [
-            'id', 'veiculo_designado', 'solicitante', 'solicitante_email', 'motorista_designado',
+            'id', 'veiculo_designado', 'solicitante_id', 'motorista_designado',
             'veiculo_designado', 'data_saida', 'horario_saida', 'data_retorno',
             'horario_retorno', 'passageiro1', 'passageiro2', 'passageiro3',
-            'passageiro4', 'municipio', 'observacao', 'status', 'data_criacao', 'autorizador',
+            'passageiro4', 'municipio', 'observacao', 'status', 'data_criacao', 'autorizador_id',
             'observacao_autorizador', 'data_autorizacao', 'paradas'
         ]
 
@@ -125,9 +124,8 @@ class ChamadoCreateSerializer(serializers.ModelSerializer):
             Parada.objects.create(chamado=chamado, **parada_data)
         return chamado    
 class ChamadoGestorSerializer(serializers.ModelSerializer):
-    solicitante = serializers.StringRelatedField(read_only=True)
-    solicitante_email = serializers.EmailField(source='solicitante.email', read_only=True)
-    autorizador = serializers.StringRelatedField(read_only=True)
+    solicitante_id = serializers.StringRelatedField(read_only=True)
+    autorizador_id = serializers.StringRelatedField(read_only=True)
     municipio = serializers.StringRelatedField(read_only=True)
     motorista_designado = MotoristaSerializer(read_only=True)
     veiculo_designado = VeiculoSerializer(read_only=True)
@@ -143,10 +141,10 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Chamado
         fields = [
-            'id', 'solicitante', 'solicitante_email', 'data_saida', 'horario_saida',
+            'id', 'solicitante_id', 'data_saida', 'horario_saida',
             'data_retorno', 'horario_retorno', 'passageiro1', 'passageiro2',
             'passageiro3', 'passageiro4', 'municipio', 'observacao', 'status', 'data_criacao',
-            'autorizador', 'observacao_autorizador', 'data_autorizacao',
+            'autorizador_id', 'observacao_autorizador', 'data_autorizacao',
             'motorista_designado', 'veiculo_designado', 'paradas',
             'motorista_id', 'veiculo_id'
         ]

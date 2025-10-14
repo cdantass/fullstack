@@ -27,9 +27,9 @@ class ParadaAdmin(admin.ModelAdmin):
 
 class ChamadoAdmin(admin.ModelAdmin):
     inlines = [ParadaInline]
-    list_display = ('id', 'solicitante_id', 'data_saida', 'itinerario', 'municipio', 'status_colorido', 'autorizador')
+    list_display = ('id', 'solicitante_id', 'data_saida', 'itinerario', 'municipio', 'status_colorido', 'autorizador_id')
     list_filter = ('status', 'data_saida', 'municipio')
-    autocomplete_fields = ['municipio', 'veiculo_designado', 'motorista_designado', 'autorizador']
+    autocomplete_fields = ['municipio', 'veiculo_designado', 'motorista_designado']
     search_fields = ('id', 'solicitante__username', 'passageiro1', 'paradas__local')
 
     @admin.display(description='Status')
@@ -57,10 +57,10 @@ class ChamadoAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         if not obj.pk:
-            obj.solicitante = request.user
+            obj.solicitante_id = request.user
         
         if change and 'status' in form.changed_data and request.user.groups.filter(name='Gestor').exists():
-            obj.autorizador = request.user
+            obj.autorizador_id = request.user
             obj.data_autorizacao = timezone.now()
             
         super().save_model(request, obj, form, change)

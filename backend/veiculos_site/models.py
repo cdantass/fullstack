@@ -76,15 +76,6 @@ class Chamado(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
     data_criacao = models.DateTimeField(auto_now_add=True)
     
-    autorizador = models.ForeignKey(
-        User, 
-        on_delete=models.PROTECT, 
-        related_name="chamados_autorizados", 
-        null=True, 
-        blank=True,
-        limit_choices_to={'groups__name': 'Gestor'}
-    )
-    
     observacao_autorizador = models.TextField(blank=True)
     data_autorizacao = models.DateTimeField(null=True, blank=True)
 
@@ -140,4 +131,4 @@ class Chamado(models.Model):
             self.veiculo_designado.save()
     
     def __str__(self):
-        return f"Chamado de {self.solicitante.username} em {self.data_saida}"
+        return f"Chamado de {self.solicitante_id.username} em {self.data_saida}"

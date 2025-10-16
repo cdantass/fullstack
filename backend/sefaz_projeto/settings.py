@@ -42,6 +42,14 @@ REST_FRAMEWORK = {
     ),
 }
 
+DRF_KEYCLOAK_AUTH = {
+    'DRF_KEYCLOAK_AUTH_SERVER_URL': 'http://keycloak:8080/',
+    'DRF_KEYCLOAK_AUTH_REALM': 'sefaz-realm',
+    'DRF_KEYCLOAK_AUTH_CLIENT_ID': 'sefaz-backend',
+    'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': 'nIMt5gBSnHjznZuPNZHXZMbqJBDXvenD', 
+    'DRF_KEYCLOAK_AUTH_PUBLIC_KEY': ''
+}
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'API do Sistema de Veículos SEFAZ',
     'DESCRIPTION': 'Documentação detalhada da API para gestão de chamados, veículos e motoristas.',
@@ -55,6 +63,7 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
+CELERY_BROKER_URL = 'redis://redis:6379/0'
 
 INSTALLED_APPS = [
     'jazzmin',
@@ -228,10 +237,3 @@ JAZZMIN_UI_TWEAKS = {
 }
 
 
-DRF_KEYCLOAK_AUTH = {
-    'DRF_KEYCLOAK_AUTH_SERVER_URL': 'http://keycloak:8080/',
-    'DRF_KEYCLOAK_AUTH_REALM': 'sefaz-realm',
-    'DRF_KEYCLOAK_AUTH_CLIENT_ID': 'sefaz-backend',
-    'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': os.getenv('VBCDGo8SxnK6yK4CBjuzFOyRRCbmkhmL'),
-    'DRF_KEYCLOAK_AUTH_PUBLIC_KEY': ''
-}

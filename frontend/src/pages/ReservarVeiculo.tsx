@@ -24,7 +24,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Loader2Icon, PlusCircleIcon, X } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/api";
+import api from "../api";
 type FormErrors = {
   [key: string]: boolean;
 };

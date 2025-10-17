@@ -4,14 +4,14 @@ services:
     container_name: sefaz_db
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      - ./backend/scripts:/docker-entrypoint-initdb.d/ # Scripts para inicializar o DB
+      - ./backend/scripts:/docker-entrypoint-initdb.d/
     env_file:
-      - .env # Carrega as variáveis do .env
+      - .env
     ports:
       - "5433:5432"
     restart: always
     networks:
-      - sefaz-net # Usa a rede única
+      - sefaz-net
 
   keycloak:
     image: quay.io/keycloak/keycloak:latest
@@ -19,16 +19,15 @@ services:
     command: start-dev
     environment:
       KEYCLOAK_CLIENT_ID: sefaz-backend
-      KEYCLOAK_CLIENT_SECRET_KEY: nIMt5gBSnHjznZuPNZHXZMbqJBDXvenD
+      KEYCLOAK_CLIENT_SECRET_KEY: PWcvh8qMpiEhueZSh83kvi9H1V9CZ6aE
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_DB: postgres
-      KC_DB_URL_HOST: db # Conecta ao serviço 'db'
+      KC_DB_URL_HOST: db
       KC_DB_URL_DATABASE: keycloak_db
       KC_DB_USERNAME: ${POSTGRES_USER}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      # CORREÇÃO CRÍTICA: Sincroniza o relógio para evitar erros de token inválido
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "8080:8080"
@@ -36,21 +35,18 @@ services:
       - db
     restart: always
     networks:
-      - sefaz-net # Usa a rede única
+      - sefaz-net
 
   backend:
     build: ./backend
     container_name: sefaz_backend
     command: gunicorn sefaz_projeto.wsgi:application --bind 0.0.0.0:8000
     volumes:
-      - ./backend:/app # Mapeia o código para live reload
+      - ./backend:/app
       - staticfiles_volume:/app/staticfiles
-      # CORREÇÃO CRÍTICA: Sincroniza o relógio para evitar erros de token inválido
       - /etc/localtime:/etc/localtime:ro
     expose:
       - 8000
-    # CORREÇÃO CRÍTICA: Usa APENAS o env_file como fonte da verdade para variáveis.
-    # A seção 'environment' foi removida para evitar conflitos.
     env_file:
       - .env
     depends_on:
@@ -58,7 +54,7 @@ services:
       - keycloak
     restart: always
     networks:
-      - sefaz-net # Usa a rede única
+      - sefaz-net
 
   celery:
     build: ./backend
@@ -73,20 +69,18 @@ services:
       - backend
     restart: always
     networks:
-      - sefaz-net # Usa a rede única
+      - sefaz-net
 
   redis:
     image: redis:7-alpine
     container_name: redis_sefaz
     restart: always
     networks:
-      - sefaz-net # Usa a rede única
-
+      - sefaz-net
   nginx:
     build:
       context: .
       dockerfile: Dockerfile.nginx
-      # Estes args são usados para construir o frontend dentro da imagem do Nginx
       args:
         - VITE_API_URL=${VITE_API_URL}
         - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
@@ -101,13 +95,13 @@ services:
       - backend
     restart: always
     networks:
-      - sefaz-net # Usa a rede única
+      - sefaz-net
 
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin_sefaz
     env_file:
-      - .env # Usa .env para credenciais
+      - .env
     ports:
       - "5050:80"
     volumes:
@@ -116,14 +110,12 @@ services:
       - db
     restart: always
     networks:
-      - sefaz-net # Usa a rede única
+      - sefaz-net
 
-# Definição da rede única que todos os serviços irão usar
 networks:
   sefaz-net:
     driver: bridge
 
-# Definição dos volumes para persistir dados
 volumes:
   postgres_data:
   pgadmin_data:

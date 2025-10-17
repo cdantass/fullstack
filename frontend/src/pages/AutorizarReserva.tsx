@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { api } from "@/api";
+import api from "../api";
 import { formatDateTime } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
 import { cn } from "@/lib/utils";

@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import { api } from "@/api";
+import api from '../../api';
 
 export type Reserva = {
   id: number;

@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 import keycloak from "./keycloak";
 
 const api = axios.create({
@@ -17,4 +17,4 @@ api.interceptors.request.use(
   }
 );
 
-export { api };
+export default api;

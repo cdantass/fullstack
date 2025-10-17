@@ -35,20 +35,21 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1','backend']
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'drf_keycloak_auth.authentication.KeycloakAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
 }
 
+
+
 DRF_KEYCLOAK_AUTH = {
-    'DRF_KEYCLOAK_AUTH_SERVER_URL': 'http://keycloak:8080/',
-    'DRF_KEYCLOAK_AUTH_REALM': 'sefaz-realm',
-    'DRF_KEYCLOAK_AUTH_CLIENT_ID': 'sefaz-backend',
-    'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': 'nIMt5gBSnHjznZuPNZHXZMbqJBDXvenD', 
-    'DRF_KEYCLOAK_AUTH_PUBLIC_KEY': ''
+    'DRF_KEYCLOAK_AUTH_SERVER_URL': os.getenv('KEYCLOAK_SERVER_URL', 'http://keycloak:8080/'),
+    'DRF_KEYCLOAK_AUTH_REALM': os.getenv('KEYCLOAK_REALM', 'sefaz-realm'),
+    'DRF_KEYCLOAK_AUTH_CLIENT_ID': os.getenv('KEYCLOAK_CLIENT_ID', 'sefaz-backend'),
+    'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': os.getenv('KEYCLOAK_CLIENT_SECRET_KEY', 'PWcvh8qMpiEhueZSh83kvi9H1V9CZ6aE')
 }
+
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'API do Sistema de Veículos SEFAZ',

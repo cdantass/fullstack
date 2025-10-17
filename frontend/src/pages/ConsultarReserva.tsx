@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { api } from "@/api";
+import api from "../api";
 import { useReservas, type Reserva } from "@/pages/context/ReservaContext";
 import { useAuth } from "../pages/context/AdminContext";
 import { Badge } from "@/components/ui/badge";

@@ -46,12 +46,11 @@ REST_FRAMEWORK = {
 DRF_KEYCLOAK_AUTH = {
     'DRF_KEYCLOAK_AUTH_SERVER_URL': os.getenv('KEYCLOAK_SERVER_URL'),
     'DRF_KEYCLOAK_AUTH_REALM': os.getenv('KEYCLOAK_REALM'),
-    
     'DRF_KEYCLOAK_AUTH_CLIENT_ID': os.getenv('KEYCLOAK_BACKEND_CLIENT_ID'),
     'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': os.getenv('KEYCLOAK_BACKEND_CLIENT_SECRET'),
-    
-    
-    'DRF_KEYCLOAK_AUTH_PUBLIC_KEY': ''
+    'DRF_KEYCLOAK_AUTH_AUDIENCE': os.getenv('KEYCLOAK_FRONTEND_AUDIENCE'),
+    'DRF_KEYCLOAK_AUTH_PUBLIC_KEY': '',
+    'DRF_KEYCLOAK_AUTH_ISSUER': 'http://localhost:8080/realms/sefaz-realm'
 }
 
 SPECTACULAR_SETTINGS = {
@@ -59,12 +58,6 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Documentação da API para gestão de chamados.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
-}
-
-
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
 CELERY_BROKER_URL = 'redis://redis:6379/0'

@@ -49,9 +49,12 @@ DRF_KEYCLOAK_AUTH = {
     'DRF_KEYCLOAK_AUTH_CLIENT_ID': os.getenv('KEYCLOAK_BACKEND_CLIENT_ID'),
     'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': os.getenv('KEYCLOAK_BACKEND_CLIENT_SECRET'),
     'DRF_KEYCLOAK_AUTH_AUDIENCE': os.getenv('KEYCLOAK_FRONTEND_AUDIENCE'),
-    'DRF_KEYCLOAK_AUTH_PUBLIC_KEY': '',
-    'DRF_KEYCLOAK_AUTH_ISSUER': 'http://localhost:8080/realms/sefaz-realm'
+    'DRF_KEYCLOAK_INTROSPECT_TOKEN': os.getenv('KEYCLOAK_INTROSPECT_TOKEN', 'True') == 'True',
+    'DRF_KEYCLOAK_VERIFY_CERT': os.getenv('KEYCLOAK_VERIFY_CERT', 'False') == 'True',
+    'DRF_KEYCLOAK_EXPECTED_ISS': os.getenv('KEYCLOAK_EXPECTED_ISS'),
 }
+
+
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'API do Sistema de Veículos SEFAZ',
@@ -233,4 +236,20 @@ JAZZMIN_UI_TWEAKS = {
     },
 }
 
-
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'loggers': {
+        'drf_keycloak_auth': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}

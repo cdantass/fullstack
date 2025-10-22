@@ -1,25 +1,25 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import { ReactKeycloakProvider } from '@react-keycloak/web';
-import App from './App';
-import keycloak from './keycloak';
-import { AuthProvider } from './pages/context/AdminContext';
-import './index.css';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { ReactKeycloakProvider } from "@react-keycloak/web";
+import App from "./App";
+import keycloak from "./keycloak";
+import { AuthProvider } from "./pages/context/AdminContext";
+import "./index.css";
 
-const root = ReactDOM.createRoot(document.getElementById('root')!);
+const root = ReactDOM.createRoot(document.getElementById("root")!);
 
 root.render(
   <React.StrictMode>
     <ReactKeycloakProvider
       authClient={keycloak}
-      initOptions={{ onLoad: 'check-sso', flow: 'standard' }}
+      initOptions={{ onLoad: "check-sso", flow: "standard" }}
     >
-      <AuthProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
           <App />
-        </BrowserRouter>
-      </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ReactKeycloakProvider>
   </React.StrictMode>
 );

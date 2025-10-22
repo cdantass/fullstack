@@ -1,5 +1,6 @@
 import { Routes, Route, Outlet } from "react-router-dom";
 import { useKeycloak } from "@react-keycloak/web";
+
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import AutorizarPage from "./pages/AutorizarReserva";
@@ -23,23 +24,24 @@ const ProtectedLayout = () => (
 );
 
 function App() {
-  const { initialized } = useKeycloak();
+  const { keycloak, initialized } = useKeycloak();
+
   if (!initialized) {
     return <div>A carregar e a verificar autenticação...</div>;
   }
+
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <ReservaProvider>
         <Routes>
+          {/* Página de login pública */}
           <Route path="/login" element={<LoginPage />} />
 
+          {/* Rotas protegidas */}
           <Route element={<ProtectedLayout />}>
             <Route index element={<Home />} />
             <Route path="/reservar-veiculo" element={<ReservaPage />} />
-            <Route
-              path="/consultar-reserva"
-              element={<ConsultarReservaPage />}
-            />
+            <Route path="/consultar-reserva" element={<ConsultarReservaPage />} />
             <Route
               path="/autorizar-reserva"
               element={
@@ -50,6 +52,7 @@ function App() {
             />
           </Route>
 
+          {/* Página 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </ReservaProvider>

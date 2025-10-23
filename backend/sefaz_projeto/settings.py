@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-5(n4&&(nl68+8b$sa_u-aoj1+d!o6d5(2duhm4!z)jh5c=udb4'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1','backend'] 
 
@@ -42,17 +42,14 @@ REST_FRAMEWORK = {
 }
 
 
-
-DRF_KEYCLOAK_AUTH = {
-    'DRF_KEYCLOAK_AUTH_SERVER_URL': os.getenv('KEYCLOAK_SERVER_URL'),
-    'DRF_KEYCLOAK_AUTH_REALM': os.getenv('KEYCLOAK_REALM'),
-    'DRF_KEYCLOAK_AUTH_CLIENT_ID': os.getenv('KEYCLOAK_BACKEND_CLIENT_ID'),
-    'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': os.getenv('KEYCLOAK_BACKEND_CLIENT_SECRET'),
-    'DRF_KEYCLOAK_AUTH_AUDIENCE': os.getenv('KEYCLOAK_FRONTEND_AUDIENCE'),
-    'DRF_KEYCLOAK_INTROSPECT_TOKEN': os.getenv('KEYCLOAK_INTROSPECT_TOKEN', 'True') == 'True',
-    'DRF_KEYCLOAK_VERIFY_CERT': os.getenv('KEYCLOAK_VERIFY_CERT', 'False') == 'True',
-    'DRF_KEYCLOAK_EXPECTED_ISS': os.getenv('KEYCLOAK_EXPECTED_ISS'),
-}
+KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_SERVER_URL", "http://keycloak:8080/")
+KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "sefaz-realm")
+KEYCLOAK_EXPECTED_ISS = os.getenv("KEYCLOAK_EXPECTED_ISS", f"{KEYCLOAK_SERVER_URL}realms/{KEYCLOAK_REALM}")
+KEYCLOAK_BACKEND_CLIENT_ID = os.getenv("KEYCLOAK_BACKEND_CLIENT_ID", "sefaz-backend")
+KEYCLOAK_BACKEND_CLIENT_SECRET = os.getenv("KEYCLOAK_BACKEND_CLIENT_SECRET")
+KEYCLOAK_FRONTEND_AUDIENCE = os.getenv("KEYCLOAK_FRONTEND_AUDIENCE", "sefaz-frontend")
+KEYCLOAK_INTROSPECT_TOKEN = os.getenv("KEYCLOAK_INTROSPECT_TOKEN", "True") == "True"
+KEYCLOAK_VERIFY_CERT = os.getenv("KEYCLOAK_VERIFY_CERT", "False") == "True"
 
 
 

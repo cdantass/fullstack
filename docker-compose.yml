@@ -16,11 +16,23 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak_sefaz
-    command: start-dev
+    command: start-dev --import-realm --hostname localhost --hostname-strict=false
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: db
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: sefaz_db
+      KC_DB_USERNAME: sefazuser
+      KC_DB_PASSWORD: Sefaz@
+      KC_HOSTNAME: keycloak
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     env_file:
       - .env
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - ./keycloak:/opt/keycloak/data/import
     ports:
       - "8080:8080"
     depends_on:
@@ -28,7 +40,6 @@ services:
     restart: always
     networks:
       - sefaz-net
-      
 
   backend:
     build: ./backend
@@ -70,15 +81,16 @@ services:
     restart: always
     networks:
       - sefaz-net
+
   nginx:
     build:
       context: .
       dockerfile: Dockerfile.nginx
       args:
-        - VITE_API_URL=${VITE_API_URL}
-        - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
-        - VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM}
-        - VITE_KEYCLOAK_CLIENT=${VITE_KEYCLOAK_CLIENT}
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
+        VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM}
+        VITE_KEYCLOAK_CLIENT: ${VITE_KEYCLOAK_CLIENT}
     container_name: nginx_sefaz
     ports:
       - "80:80"

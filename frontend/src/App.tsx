@@ -24,7 +24,7 @@ const ProtectedLayout = () => (
 );
 
 function App() {
-  const { keycloak, initialized } = useKeycloak();
+  const { initialized } = useKeycloak();
 
   if (!initialized) {
     return <div>A carregar e a verificar autenticação...</div>;

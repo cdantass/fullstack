@@ -28,28 +28,29 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-5(n4&&(nl68+8b$sa_u-aoj1+d!o6d5(2duhm4!z)jh5c=udb4'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1','backend'] 
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
+    'DEFAULT_AUTHENTICATION_CLASSES': (
         'drf_keycloak_auth.authentication.KeycloakAuthentication',
-    ],
+        'rest_framework.authentication.SessionAuthentication',
+    ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ]
 }
 
-
-KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_SERVER_URL", "http://keycloak:8080/")
-KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "sefaz-realm")
-KEYCLOAK_EXPECTED_ISS = os.getenv("KEYCLOAK_EXPECTED_ISS", f"{KEYCLOAK_SERVER_URL}realms/{KEYCLOAK_REALM}")
-KEYCLOAK_BACKEND_CLIENT_ID = os.getenv("KEYCLOAK_BACKEND_CLIENT_ID", "sefaz-backend")
-KEYCLOAK_BACKEND_CLIENT_SECRET = os.getenv("KEYCLOAK_BACKEND_CLIENT_SECRET")
-KEYCLOAK_FRONTEND_AUDIENCE = os.getenv("KEYCLOAK_FRONTEND_AUDIENCE", "sefaz-frontend")
-KEYCLOAK_INTROSPECT_TOKEN = os.getenv("KEYCLOAK_INTROSPECT_TOKEN", "True") == "True"
-KEYCLOAK_VERIFY_CERT = os.getenv("KEYCLOAK_VERIFY_CERT", "False") == "True"
+DRF_KEYCLOAK_AUTH = {
+    'DRF_KEYCLOAK_AUTH_SERVER_URL': os.getenv('KEYCLOAK_SERVER_URL'),
+    'DRF_KEYCLOAK_AUTH_REALM': os.getenv('KEYCLOAK_REALM'),
+    'DRF_KEYCLOAK_AUTH_CLIENT_ID': os.getenv('KEYCLOAK_BACKEND_CLIENT_ID'),
+    'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': os.getenv('KEYCLOAK_BACKEND_CLIENT_SECRET'),
+    'DRF_KEYCLOAK_AUTH_AUDIENCE': os.getenv('KEYCLOAK_FRONTEND_AUDIENCE'),
+    'DRF_KEYCLOAK_AUTH_PUBLIC_KEY': '',
+    'DRF_KEYCLOAK_AUTH_ISSUER': 'http://localhost:8080/realms/sefaz-realm'
+}
 
 
 
@@ -63,33 +64,39 @@ SPECTACULAR_SETTINGS = {
 CELERY_BROKER_URL = 'redis://redis:6379/0'
 
 INSTALLED_APPS = [
-    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'jazzmin',
     'rest_framework',
+    'drf_spectacular',
     'drf_keycloak_auth',
     'corsheaders',
     'import_export',
     'django_filters',
-    'drf_spectacular',
     'rolepermissions',
     'veiculos_site',
 ]
 
+AUTHENTICATION_BACKENDS = [   
+    'drf_keycloak_auth.backends.KeycloakAuthenticationBackend',
+    'django.contrib.auth.backends.ModelBackend',  
+]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 
 ROOT_URLCONF = 'sefaz_projeto.urls'
 
@@ -171,7 +178,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1",
 ]
 
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "content-type",
+]
+
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 JAZZMIN_SETTINGS = {

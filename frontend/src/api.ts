@@ -2,14 +2,13 @@ import axios from 'axios';
 import keycloak from './keycloak';
 
 const api = axios.create({
-  baseURL: 'http://localhost/api',
+  baseURL: import.meta.env.VITE_API_URL,
+
 });
 
-// Interceptor global — injeta o token se existir
 api.interceptors.request.use(async (config) => {
   try {
     if (keycloak.authenticated) {
-      // Atualiza token se estiver perto de expirar
       await keycloak.updateToken(10);
       config.headers.Authorization = `Bearer ${keycloak.token}`;
     }

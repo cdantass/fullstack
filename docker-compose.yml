@@ -29,6 +29,7 @@ services:
       KC_HOSTNAME_STRICT_HTTPS: false
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_FRONTEND_URL: http://localhost:8080
     env_file:
       - .env
     volumes:
@@ -98,9 +99,11 @@ services:
       - staticfiles_volume:/app/backend/staticfiles
     depends_on:
       - backend
+      - keycloak
     restart: always
     networks:
       - sefaz-net
+
 
   pgadmin:
     image: dpage/pgadmin4

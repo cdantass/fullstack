@@ -1,9 +1,9 @@
-import Keycloak from 'keycloak-js';
+import Keycloak from "keycloak-js";
 
 const keycloak = new Keycloak({
-  url: 'http://localhost:8080/',
-  realm: 'sefaz-realm',
-  clientId: 'sefaz-frontend',
+  url: import.meta.env.VITE_KEYCLOAK_URL || "http://localhost:8080/",
+  realm: import.meta.env.VITE_KEYCLOAK_REALM || "sefaz-realm",
+  clientId: import.meta.env.VITE_KEYCLOAK_CLIENT || "sefaz-frontend",
 });
 
 export default keycloak;

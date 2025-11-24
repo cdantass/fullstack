@@ -47,7 +47,7 @@ class MotoristaViewSet(viewsets.ModelViewSet):
 
 
 class ChamadoViewSet(viewsets.ModelViewSet):
-    
+
     def get_permissions(self):
         if self.action in ['update', 'partial_update', 'destroy']:
             self.permission_classes = [IsAuthenticated, IsGestor]
@@ -61,7 +61,9 @@ class ChamadoViewSet(viewsets.ModelViewSet):
         if has_role(user, 'gestor'):
             return Chamado.objects.all().order_by('-data_criacao')
         
-        return Chamado.objects.filter(solicitante_id=user.sub).order_by('-data_criacao')
+        return Chamado.objects.filter(solicitante_id=user.id).order_by('-data_criacao')
+
+
 
     def get_serializer_class(self):
         user = self.request.user
@@ -74,13 +76,14 @@ class ChamadoViewSet(viewsets.ModelViewSet):
         return ChamadoSerializer
 
     def perform_create(self, serializer):
-        serializer.save(solicitante_id=self.request.user.sub)
+        serializer.save(solicitante_id=self.request.user.id)
 
     def perform_update(self, serializer):
         serializer.save(
-            autorizador_id=self.request.user.sub,
+            autorizador_id=self.request.user.id,
             data_autorizacao=timezone.now()
         )
+
 
 
 class MunicipioListView(generics.ListAPIView):
@@ -106,4 +109,6 @@ class MeusChamadosListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Chamado.objects.filter(solicitante_id=self.request.user.sub).order_by('-data_criacao')
+        return Chamado.objects.filter(
+            solicitante_id=self.request.user.id
+        ).order_by('-data_criacao')

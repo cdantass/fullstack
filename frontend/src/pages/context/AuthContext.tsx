@@ -1,10 +1,10 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useState,
-  type ReactNode,
+  useEffect,
   useMemo,
+  type ReactNode,
 } from "react";
 import api from "../../api";
 
@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadUser = async () => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("access");
 
       if (!token) {
         setUser(null);
@@ -36,20 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const response = await api.get("/me/");
+      const res = await api.get("/me/");
+      const data = res.data;
 
-      const data = response.data;
-
-      const mappedUser: User = {
+      const mapped: User = {
         id: data.id,
         name: data.name,
         email: data.email,
         usertype: data.usertype === "gestor" ? "gestor" : "user",
       };
 
-      setUser(mappedUser);
-    } catch (error) {
-      console.error("Erro ao carregar usuário:", error);
+      setUser(mapped);
+    } catch {
       setUser(null);
     } finally {
       setLoading(false);
@@ -61,22 +59,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({
-      user,
-      loading,
-    }),
+    () => ({ user, loading }),
     [user, loading]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be inside AuthProvider");
+  return ctx;
 }

@@ -1,15 +1,11 @@
-import { useKeycloak } from '@react-keycloak/web';
-import { Navigate } from 'react-router-dom';
-import React from 'react';
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../pages/context/AdminContext";
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { keycloak, initialized } = useKeycloak();
+export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
 
-  if (!initialized) {
-    return <div>A carregar...</div>;
-  }
+  if (loading) return <p>Carregando...</p>;
+  if (!user) return <Navigate to="/login" replace />;
 
-  return keycloak.authenticated ? <>{children}</> : <Navigate to="/login" />;
+  return <>{children}</>;
 }
-
-export default ProtectedRoute;

@@ -1,21 +1,49 @@
-import axios from 'axios';
-import keycloak from './keycloak';
+import axios from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-
 });
 
-api.interceptors.request.use(async (config) => {
-  try {
-    if (keycloak.authenticated) {
-      await keycloak.updateToken(10);
-      config.headers.Authorization = `Bearer ${keycloak.token}`;
-    }
-  } catch (error) {
-    console.error('Erro ao atualizar token Keycloak:', error);
-  }
+// injeta token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+// refresh automático
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      const refresh = localStorage.getItem("refresh_token");
+      if (!refresh) {
+        localStorage.clear();
+        window.location.href = "/login";
+        return Promise.reject(error);
+      }
+
+      try {
+        const res = await axios.post(
+          `${import.meta.env.VITE_API_URL}/token/refresh/`,
+          { refresh }
+        );
+
+        localStorage.setItem("access_token", res.data.access);
+        api.defaults.headers.Authorization = `Bearer ${res.data.access}`;
+        return api(originalRequest);
+      } catch {
+        localStorage.clear();
+        window.location.href = "/login";
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;

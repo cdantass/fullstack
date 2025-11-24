@@ -52,7 +52,9 @@ class ParadaSerializer(serializers.ModelSerializer):
         fields = ['local']
 
 class ChamadoSerializer(serializers.ModelSerializer):
-    solicitante_id = serializers.StringRelatedField(read_only=True)
+    solicitante_id = serializers.IntegerField(read_only=True)
+    autorizador_id = serializers.IntegerField(read_only=True)
+
     municipio = serializers.SlugRelatedField(
         queryset=Municipio.objects.all(),
         slug_field='nome',
@@ -61,7 +63,6 @@ class ChamadoSerializer(serializers.ModelSerializer):
     )
     motorista_designado = serializers.StringRelatedField(read_only=True)
     veiculo_designado = serializers.StringRelatedField(read_only=True)
-    autorizador_id = serializers.StringRelatedField(read_only=True)
     paradas = ParadaSerializer(many=True, required=False)
 
     class Meta:
@@ -70,8 +71,9 @@ class ChamadoSerializer(serializers.ModelSerializer):
             'id', 'veiculo_designado', 'solicitante_id', 'motorista_designado',
             'veiculo_designado', 'data_saida', 'horario_saida', 'data_retorno',
             'horario_retorno', 'passageiro1', 'passageiro2', 'passageiro3',
-            'passageiro4', 'municipio', 'observacao', 'status', 'data_criacao', 'autorizador_id',
-            'observacao_autorizador', 'data_autorizacao', 'paradas'
+            'passageiro4', 'municipio', 'observacao', 'status', 'data_criacao',
+            'autorizador_id', 'observacao_autorizador', 'data_autorizacao',
+            'paradas'
         ]
 
     def create(self, validated_data):
@@ -80,6 +82,7 @@ class ChamadoSerializer(serializers.ModelSerializer):
         for parada_data in paradas_data:
             Parada.objects.create(chamado=chamado, **parada_data)
         return chamado
+
 
 class ChamadoCreateSerializer(serializers.ModelSerializer):
     paradas = ParadaSerializer(many=True, required=False)

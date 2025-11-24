@@ -1,12 +1,19 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 import { BreadcrumbTopBar } from "./breadcrumb";
-import { useKeycloak } from "@react-keycloak/web";
 
 export const TopBar = React.memo(function TopBar() {
   const location = useLocation();
   const pathname = location.pathname;
-  const { keycloak, initialized } = useKeycloak();
+
+  const token = localStorage.getItem("access_token");
+
+  const payload = token
+    ? JSON.parse(atob(token.split(".")[1]))
+    : null;
+
+  const username = payload?.username || null;
+  const email = payload?.email || null;
 
   const segments = pathname.split("/").filter(Boolean);
   const pageTitle = segments.length
@@ -15,6 +22,13 @@ export const TopBar = React.memo(function TopBar() {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ")
     : "Home";
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+
+    window.location.href = "/login";
+  };
 
   return (
     <header className="w-full bg-topbar-background dark:bg-gray-900 shadow flex items-center justify-between px-6 py-3 h-[80px]">
@@ -29,33 +43,25 @@ export const TopBar = React.memo(function TopBar() {
 
       <div className="flex items-center gap-4">
         <div className="text-right">
-          {!initialized ? (
-            <>
-              <p className="text-m font-medium text-white dark:text-gray-100 animate-pulse">
-                Carregando...
-              </p>
-              <p className="text-xs text-gray-300 dark:text-gray-400 animate-pulse">
-                ...
-              </p>
-            </>
-          ) : keycloak.authenticated ? (
-            <>
-              <p className="text-m font-medium text-white dark:text-gray-100">
-                {keycloak.tokenParsed?.preferred_username}
-              </p>
-              <p className="text-xs text-gray-300 dark:text-gray-400">
-                {keycloak.tokenParsed?.email}
-              </p>
-            </>
-          ) : (
+          {!token ? (
             <p className="text-m font-medium text-white dark:text-gray-100">
               Não autenticado
             </p>
+          ) : (
+            <>
+              <p className="text-m font-medium text-white dark:text-gray-100">
+                {username || "Usuário"}
+              </p>
+              <p className="text-xs text-gray-300 dark:text-gray-400">
+                {email || ""}
+              </p>
+            </>
           )}
         </div>
-        {keycloak.authenticated && (
+
+        {token && (
           <button
-            onClick={() => keycloak.logout()}
+            onClick={handleLogout}
             className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 rounded-md text-sm"
           >
             Sair

@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+from rest_framework_simplejwt.tokens import RefreshToken
 import os
 
 load_dotenv()
@@ -33,26 +34,20 @@ DEBUG = True
 ALLOWED_HOSTS = ['localhost', '127.0.0.1','backend'] 
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'drf_keycloak_auth.authentication.KeycloakAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ]
 }
 
-DRF_KEYCLOAK_AUTH = {
-    'DRF_KEYCLOAK_AUTH_SERVER_URL': os.getenv('KEYCLOAK_SERVER_URL'),
-    'DRF_KEYCLOAK_AUTH_REALM': os.getenv('KEYCLOAK_REALM'),
-    'DRF_KEYCLOAK_AUTH_CLIENT_ID': os.getenv('KEYCLOAK_BACKEND_CLIENT_ID'),
-    'DRF_KEYCLOAK_AUTH_CLIENT_SECRET_KEY': os.getenv('KEYCLOAK_BACKEND_CLIENT_SECRET'),
-    'DRF_KEYCLOAK_AUTH_AUDIENCE': os.getenv('KEYCLOAK_FRONTEND_AUDIENCE'),
-    'DRF_KEYCLOAK_AUTH_PUBLIC_KEY': '',
-    'DRF_KEYCLOAK_AUTH_ISSUER': 'http://localhost:8080/realms/sefaz-realm'
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
-
-
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'API do Sistema de Veículos SEFAZ',
@@ -73,18 +68,16 @@ INSTALLED_APPS = [
     'jazzmin',
     'rest_framework',
     'drf_spectacular',
-    'drf_keycloak_auth',
     'corsheaders',
     'import_export',
     'django_filters',
-    'rolepermissions',
     'veiculos_site',
 ]
 
-AUTHENTICATION_BACKENDS = [   
-    'drf_keycloak_auth.backends.KeycloakAuthenticationBackend',
-    'django.contrib.auth.backends.ModelBackend',  
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -183,8 +176,8 @@ CORS_ALLOW_HEADERS = [
     "content-type",
 ]
 
-CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
+
 
 
 JAZZMIN_SETTINGS = {
@@ -243,23 +236,5 @@ JAZZMIN_UI_TWEAKS = {
         "warning": "btn-warning",
         "danger": "btn-danger",
         "success": "btn-outline-success"
-    },
-}
-
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {'class': 'logging.StreamHandler'},
-    },
-    'loggers': {
-        'drf_keycloak_auth': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-        },
-        'django.request': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-        },
     },
 }

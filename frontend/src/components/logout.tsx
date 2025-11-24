@@ -1,16 +1,17 @@
 import { LogOut } from "lucide-react";
 import { Button } from "./ui/button";
-import { useKeycloak } from "@react-keycloak/web";
 
 const LogoutButton = () => {
-  const { keycloak } = useKeycloak();
 
   const handleLogout = () => {
-    keycloak.logout({ redirectUri: window.location.origin });
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+
+    window.location.href = "/login";
   };
 
   return (
-    <Button variant={"outline"} onClick={handleLogout} className="">
+    <Button variant="outline" onClick={handleLogout}>
       <LogOut />
     </Button>
   );

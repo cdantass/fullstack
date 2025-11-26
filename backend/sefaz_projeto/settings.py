@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
-from rest_framework_simplejwt.tokens import RefreshToken
 import os
 
 load_dotenv()

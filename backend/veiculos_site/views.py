@@ -1,11 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from rest_framework import generics, status, viewsets
+from rest_framework import generics, viewsets
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
 from rolepermissions.checkers import has_role
+from rest_framework.response import Response
 
-from .models import Veiculo, Motorista, Chamado, Municipio, Parada
+from .models import Veiculo, Motorista, Chamado, Municipio
 from .serializers import (
     CreateUserSerializer,
     VeiculoSerializer,
@@ -19,6 +19,7 @@ from .serializers import (
 from .permissions import IsGestor
 
 User = get_user_model()
+
 
 class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserProfileSerializer
@@ -57,13 +58,9 @@ class ChamadoViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-
         if has_role(user, 'gestor'):
             return Chamado.objects.all().order_by('-data_criacao')
-        
         return Chamado.objects.filter(solicitante_id=user.id).order_by('-data_criacao')
-
-
 
     def get_serializer_class(self):
         user = self.request.user
@@ -83,7 +80,6 @@ class ChamadoViewSet(viewsets.ModelViewSet):
             autorizador_id=self.request.user.id,
             data_autorizacao=timezone.now()
         )
-
 
 
 class MunicipioListView(generics.ListAPIView):

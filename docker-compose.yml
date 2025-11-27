@@ -1,92 +1,93 @@
 services:
-  db:
-    image: postgres:16
-    container_name: sefaz_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-      - ./backend/scripts:/docker-entrypoint-initdb.d/
-    env_file:
-      - .env
-    ports:
-      - "5433:5432"
-    restart: always
-    networks:
-      - sefaz-net
-
   backend:
-    build: ./backend
-    container_name: sefaz_backend
-    command: gunicorn sefaz_projeto.wsgi:application --bind 0.0.0.0:8000
-    volumes:
-      - ./backend:/app
-      - staticfiles_volume:/app/staticfiles
-      - /etc/localtime:/etc/localtime:ro
-    expose:
-      - 8000
+    build:
+      context: ./backend
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
+             gunicorn sefaz_projeto.wsgi:application --bind 0.0.0.0:8000 --workers 4"
     env_file:
       - .env
+    volumes:
+      - staticfiles_volume:/app/staticfiles
     depends_on:
       - db
-    restart: always
-    networks:
-      - sefaz-net
-
-  celery:
-    build: ./backend
-    container_name: sefaz_celery
-    command: celery -A sefaz_projeto worker -l info
-    volumes:
-      - ./backend:/app
-    env_file:
-      - .env
-    depends_on:
       - redis
-      - backend
     restart: always
     networks:
-      - sefaz-net
-
-  redis:
-    image: redis:7-alpine
-    container_name: redis_sefaz
-    restart: always
-    networks:
-      - sefaz-net
+      - backend-net
 
   nginx:
     build:
       context: .
       dockerfile: Dockerfile.nginx
       args:
-        VITE_API_URL: ${VITE_API_URL}
+        - VITE_API_URL=http://localhost/api
     container_name: nginx_sefaz
+    volumes:
+      - staticfiles_volume:/app/staticfiles
     ports:
       - "80:80"
-    volumes:
-      - staticfiles_volume:/app/backend/staticfiles
     depends_on:
       - backend
     restart: always
     networks:
-      - sefaz-net
+      - frontend-net
+      - backend-net
+
+
+  
+  celery:
+    build:
+      context: ./backend
+    command: celery -A sefaz_projeto worker -l info
+    env_file:
+      - .env
+    depends_on:
+      - backend
+      - redis
+    restart: always
+    networks:
+      - backend-net
+
+  db:
+    image: postgres:16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - .env
+    ports:
+      - "5433:5432"
+    restart: always
+    networks:
+      - backend-net
+
+  redis:
+    image: redis:7
+    restart: always
+    networks:
+      - backend-net
 
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin_sefaz
-    env_file:
-      - .env
+    restart: always
     ports:
       - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - db
-    restart: always
     networks:
-      - sefaz-net
+      - backend-net
 
 networks:
-  sefaz-net:
+  frontend-net:
+    driver: bridge
+  backend-net:
     driver: bridge
 
 volumes:

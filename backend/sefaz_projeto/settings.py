@@ -28,9 +28,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-5(n4&&(nl68+8b$sa_u-aoj1+d!o6d5(2duhm4!z)jh5c=udb4'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1','backend'] 
+ALLOWED_HOSTS = ['localhost', '127.0.0.1','backend', 'nginx_sefaz'] 
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -38,7 +38,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
-    ]
+    ],
 }
 
 
@@ -58,13 +58,13 @@ SPECTACULAR_SETTINGS = {
 CELERY_BROKER_URL = 'redis://redis:6379/0'
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'jazzmin',
     'rest_framework',
     'drf_spectacular',
     'corsheaders',
@@ -150,11 +150,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = '/app/staticfiles'
+
 STATICFILES_DIRS = [
-    BASE_DIR / "static",
+    BASE_DIR / 'static',
 ]
-STATIC_ROOT = BASE_DIR / "staticfiles"
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -176,6 +178,24 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost",
+    "http://127.0.0.1",
+    "http://localhost:80",
+    "http://127.0.0.1:80",
+    "http://backend",
+    "http://backend:8000",
+    "http://nginx_sefaz",
+    "http://nginx_sefaz:80",
+]
+
+CSRF_TRUSTED_ORIGINS += [
+    "http://0.0.0.0",
+    "http://0.0.0.0:80",
+]
+
+CSRF_TRUSTED_ORIGINS = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
 
 
 

@@ -4,14 +4,12 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
-// injeta token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// refresh automático
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -28,17 +26,16 @@ api.interceptors.response.use(
       }
 
       try {
-        const res = await axios.post(
-          `${import.meta.env.VITE_API_URL}/token/refresh/`,
-          { refresh }
-        );
+        const res = await api.post("/api/token/refresh/", { refresh });
 
         localStorage.setItem("access_token", res.data.access);
         api.defaults.headers.Authorization = `Bearer ${res.data.access}`;
+
         return api(originalRequest);
-      } catch {
+      } catch (refreshError) {
         localStorage.clear();
         window.location.href = "/login";
+        return Promise.reject(refreshError);
       }
     }
 

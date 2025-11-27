@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import api from "../api"; // seu axios configurado
+import api from "../api";
 
 function LoginPage() {
   const [username, setUsername] = useState("");
@@ -8,7 +8,6 @@ function LoginPage() {
   const [redirect, setRedirect] = useState(false);
   const [error, setError] = useState("");
 
-  // Se já estiver logado
   const token = localStorage.getItem("access_token");
   if (token) {
     return <Navigate to="/" />;
@@ -19,7 +18,7 @@ function LoginPage() {
     setError("");
 
     try {
-      const response = await api.post("/token/", {
+      const response = await api.post("/api/token/", {
         username,
         password,
       });
@@ -28,7 +27,7 @@ function LoginPage() {
       localStorage.setItem("refresh_token", response.data.refresh);
 
       setRedirect(true);
-    } catch (err) {
+    } catch {
       setError("Usuário ou senha inválidos");
     }
   };

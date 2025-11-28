@@ -10,10 +10,13 @@ import api from "../../api";
 
 type User = {
   id: number;
-  name: string;
+  username: string;
   email: string;
-  usertype: "gestor" | "user";
+  is_gestor: boolean;
+  is_superuser: boolean;
+  is_staff: boolean;
 };
+
 
 interface AuthContextType {
   user: User | null;
@@ -41,10 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const mapped: User = {
         id: data.id,
-        name: data.name,
+        username: data.username,
         email: data.email,
-        usertype: data.usertype === "gestor" ? "gestor" : "user",
+        is_gestor: data.is_gestor,
+        is_superuser: data.is_superuser,
+        is_staff: data.is_staff,
       };
+
 
       setUser(mapped);
     } catch {

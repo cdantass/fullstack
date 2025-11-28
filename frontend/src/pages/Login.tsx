@@ -18,7 +18,7 @@ function LoginPage() {
     setError("");
 
     try {
-      const response = await api.post("/api/token/", {
+      const response = await api.post("/token/", {
         username,
         password,
       });

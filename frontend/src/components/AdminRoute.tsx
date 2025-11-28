@@ -6,7 +6,10 @@ export default function AdminRoute({ children }: { children: React.ReactNode }) 
 
   if (loading) return <p>Carregando...</p>;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.usertype !== "gestor") return <Navigate to="/" replace />;
+
+  const isAdmin = user.is_superuser || user.is_gestor;
+
+  if (!isAdmin) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }

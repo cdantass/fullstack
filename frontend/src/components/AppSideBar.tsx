@@ -17,6 +17,8 @@ import { useAuth } from "../pages/context/AdminContext";
 export function AppSidebar({}: React.ComponentProps<typeof Sidebar>) {
   const { user, loading } = useAuth();
 
+  const isAdmin = user?.is_superuser || user?.is_gestor;
+
   const data = React.useMemo(() => {
     return {
       navMain: [
@@ -30,7 +32,8 @@ export function AppSidebar({}: React.ComponentProps<typeof Sidebar>) {
               title: "Reservar Veículo",
               url: "./reservar-veiculo",
             },
-            ...(user?.usertype === "gestor"
+
+            ...(isAdmin
               ? [
                   {
                     title: "Autorizar Reserva",
@@ -38,6 +41,7 @@ export function AppSidebar({}: React.ComponentProps<typeof Sidebar>) {
                   },
                 ]
               : []),
+
             {
               title: "Consultar Reserva",
               url: "./consultar-reserva",
@@ -46,7 +50,7 @@ export function AppSidebar({}: React.ComponentProps<typeof Sidebar>) {
         },
       ],
     };
-  }, [user]);
+  }, [isAdmin]);
 
   return (
     <Sidebar collapsible="none">

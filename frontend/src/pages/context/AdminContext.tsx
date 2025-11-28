@@ -10,9 +10,11 @@ import api from "../../api";
 
 type User = {
   id: number;
-  name: string;
+  username: string;
   email: string;
-  usertype: "gestor" | "user";
+  is_superuser: boolean;
+  is_staff: boolean;
+  is_gestor: boolean; // vem do backend
 };
 
 interface AuthContextType {
@@ -37,14 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const response = await api.get("/me/");
-
       const data = response.data;
 
       const mappedUser: User = {
         id: data.id,
-        name: data.name,
+        username: data.username,
         email: data.email,
-        usertype: data.usertype === "gestor" ? "gestor" : "user",
+        is_superuser: data.is_superuser,
+        is_staff: data.is_staff,
+        is_gestor: data.is_gestor,
       };
 
       setUser(mappedUser);
@@ -68,7 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, loading]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useReservas, type Reserva } from "@/pages/context/ReservaContext";
-import { useAuth } from "@/pages/context/AdminContext";
+import { useReservas, type Reserva } from "@/context/reserva-context-hook";
+import { useAuth } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { RefreshCw, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -14,11 +14,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import api from "../api";
+import api from "@/api";
 import { formatDateTime } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
-import { cn } from "@/lib/utils";
+import { mockMotoristas, mockVeiculos } from "@/mocks/data";
+import { CheckCircle, Link, PlusCircleIcon, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Motorista {
   id: number;
@@ -42,6 +69,8 @@ const getStatusBadgeClasses = (status: Reserva["status"]) => {
       return "bg-red-100 text-red-800 hover:bg-red-200";
     case "Pendente":
       return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
+    case "Concluido":
+      return "bg-blue-100 text-blue-800 hover:bg-blue-200";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -62,18 +91,39 @@ export default function AutorizarPage() {
   const [selectedVeiculos, setSelectedVeiculos] = React.useState<
     Record<number, string>
   >({});
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [selectedReservas, setSelectedReservas] = React.useState<number[]>([]);
+  const [isCombineModalOpen, setIsCombineModalOpen] = React.useState(false);
+  const [viewSharedRideId, setViewSharedRideId] = React.useState<string | null>(
+    null
+  );
+  const [combineFormData, setCombineFormData] = React.useState({
+    data_saida: "",
+    horario_saida: "",
+    data_retorno: "",
+    horario_retorno: "",
+    paradas: [] as string[],
+    passageiros: [] as string[],
+    motorista_id: "",
+    veiculo_id: "",
+    observacao: "",
+  });
+  const [paradaInput, setParadaInput] = React.useState("");
+  const [passageiroInput, setPassageiroInput] = React.useState("");
 
   React.useEffect(() => {
     fetchReservas();
     const fetchOptions = async () => {
       try {
-        const [mRes, vRes] = await Promise.all([
-          api.get("/motoristas/"),
-          api.get("/veiculos/"),
-        ]);
-        setMotoristas(mRes.data);
-        setVeiculos(vRes.data);
-      } catch (err) {
+        // const [mRes, vRes] = await Promise.all([
+        //   api.get("/api/motoristas/"),
+        //   api.get("/api/veiculos/"),
+        // ]);
+        // setMotoristas(mRes.data);
+        // setVeiculos(vRes.data);
+        setMotoristas(mockMotoristas);
+        setVeiculos(mockVeiculos);
+      } catch {
         toast.error("Não foi possível carregar motoristas ou veículos.");
       }
     };
@@ -97,6 +147,144 @@ export default function AutorizarPage() {
     [veiculos]
   );
 
+  const handleSelectReserva = (id: number) => {
+    setSelectedReservas((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const pendingIds = filteredReservas
+      .filter((r) => r.status === "Pendente")
+      .map((r) => r.id);
+
+    if (pendingIds.every((id) => selectedReservas.includes(id))) {
+      setSelectedReservas((prev) =>
+        prev.filter((id) => !pendingIds.includes(id))
+      );
+    } else {
+      setSelectedReservas((prev) =>
+        Array.from(new Set([...prev, ...pendingIds]))
+      );
+    }
+  };
+
+  const handleCombineReservas = () => {
+    if (selectedReservas.length < 2) return;
+
+    const selected = reservas.filter((r) => selectedReservas.includes(r.id));
+    const firstReserva = selected[0];
+
+    // Aggregate unique stops and passengers
+    const allParadas = Array.from(
+      new Set(selected.flatMap((r) => r.paradas))
+    ).filter(Boolean);
+    const allPassageiros = Array.from(
+      new Set(selected.flatMap((r) => r.passageiros))
+    ).filter(Boolean);
+
+    if (firstReserva) {
+      setCombineFormData({
+        data_saida: firstReserva.data_saida,
+        horario_saida: firstReserva.horario_saida,
+        data_retorno: firstReserva.data_retorno,
+        horario_retorno: firstReserva.horario_retorno,
+        paradas: allParadas,
+        passageiros: allPassageiros,
+        motorista_id: "",
+        veiculo_id: "",
+        observacao: "",
+      });
+    }
+    setIsCombineModalOpen(true);
+  };
+
+  const handleConfirmCombine = async () => {
+    if (!combineFormData.motorista_id || !combineFormData.veiculo_id) {
+      toast.error("Selecione um motorista e um veículo para combinar.");
+      return;
+    }
+
+    // Generate a new sequential ID for the shared ride
+    const maxId = reservas.reduce((max, r) => Math.max(max, r.id), 0);
+    const sharedId = String(maxId + 1);
+
+    const now = new Date();
+    const status = "Aprovado";
+
+    try {
+      await Promise.all(
+        selectedReservas.map(async (id) => {
+          const reserva = reservas.find((r) => r.id === id);
+          if (!reserva) return;
+
+          /* const apiPayload = {
+            ...reserva,
+            viagemCompartilhadaId: sharedId,
+            data_saida: combineFormData.data_saida,
+            horario_saida: combineFormData.horario_saida,
+            data_retorno: combineFormData.data_retorno,
+            horario_retorno: combineFormData.horario_retorno,
+            paradas: combineFormData.paradas,
+            passageiros: combineFormData.passageiros,
+            status: status,
+            motorista_id:
+              status === "Aprovado"
+                ? parseInt(combineFormData.motorista_id, 10)
+                : null,
+            veiculo_id:
+              status === "Aprovado"
+                ? parseInt(combineFormData.veiculo_id, 10)
+                : null,
+            observacao_autorizador: combineFormData.observacao,
+            autorizador: status === "Aprovado" ? authUser?.name : undefined,
+          }; */
+
+          // Mocking API call
+          // await api.put(`/api/chamados/${id}/`, apiPayload);
+          await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate delay
+
+          updateReserva(id, {
+            viagemCompartilhadaId: sharedId,
+            data_saida: combineFormData.data_saida,
+            horario_saida: combineFormData.horario_saida,
+            data_retorno: combineFormData.data_retorno,
+            horario_retorno: combineFormData.horario_retorno,
+            paradas: combineFormData.paradas,
+            passageiros: combineFormData.passageiros,
+            status: status as Reserva["status"],
+            motorista:
+              status === "Aprovado"
+                ? motoristaMap[parseInt(combineFormData.motorista_id, 10)]
+                : undefined,
+            veiculo:
+              status === "Aprovado"
+                ? veiculoMap[parseInt(combineFormData.veiculo_id, 10)]
+                : undefined,
+            obsAdmin: combineFormData.observacao,
+            autorizador: status === "Aprovado" ? authUser?.name : undefined,
+            data_autorizacao:
+              status === "Aprovado"
+                ? now.toISOString().split("T")[0]
+                : undefined,
+            horario_autorizacao:
+              status === "Aprovado"
+                ? `${String(now.getHours()).padStart(2, "0")}:${String(
+                    now.getMinutes()
+                  ).padStart(2, "0")}`
+                : undefined,
+          });
+        })
+      );
+      toast.success("Viagens combinadas e atualizadas com sucesso!");
+      setSelectedReservas([]);
+      setIsCombineModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao combinar viagens.");
+    }
+  };
+
   const handleUpdateReserva = async (
     id: number,
     status: "aprovado" | "recusado"
@@ -114,110 +302,244 @@ export default function AutorizarPage() {
       return;
     }
 
+    let idsToUpdate = [id];
+
+    if (reservaOriginal.viagemCompartilhadaId && status === "aprovado") {
+      const linkedReservas = reservas.filter(
+        (r) =>
+          r.viagemCompartilhadaId === reservaOriginal.viagemCompartilhadaId &&
+          r.status === "Pendente"
+      );
+
+      if (linkedReservas.length > 1) {
+        const confirmShared = window.confirm(
+          "Esta reserva faz parte de uma viagem compartilhada. Deseja aplicar a mesma aprovação (motorista/veículo) para todas as reservas vinculadas?"
+        );
+        if (confirmShared) {
+          idsToUpdate = linkedReservas.map((r) => r.id);
+        }
+      }
+    }
+
     const now = new Date();
-    const apiPayload = {
-      ...reservaOriginal,
-      status: status,
-      observacao_autorizador: obs[id] ?? "",
-      motorista_id: status === "aprovado" ? parseInt(motoristaId, 10) : null,
-      veiculo_id: status === "aprovado" ? parseInt(veiculoId, 10) : null,
-      autorizador: authUser?.name,
-    };
 
     try {
-      await api.put(`/chamados/${id}/`, apiPayload);
-      updateReserva(id, {
-        status: status === "aprovado" ? "Aprovado" : "Negado",
-        obsAdmin: obs[id] ?? "",
-        motorista:
-          status === "aprovado" && motoristaId
-            ? motoristaMap[parseInt(motoristaId, 10)]
-            : undefined,
-        veiculo:
-          status === "aprovado" && veiculoId
-            ? veiculoMap[parseInt(veiculoId, 10)]
-            : undefined,
-        autorizador: authUser?.name,
-        data_autorizacao: now.toISOString().split("T")[0],
-        horario_autorizacao: `${String(now.getHours()).padStart(
-          2,
-          "0"
-        )}:${String(now.getMinutes()).padStart(2, "0")}`,
-      });
-      setObs((s) => ({ ...s, [id]: "" }));
+      await Promise.all(
+        idsToUpdate.map(async (targetId) => {
+          const targetReserva = reservas.find((r) => r.id === targetId);
+          if (!targetReserva) return;
+
+          /* const apiPayload = {
+            ...targetReserva,
+            status: status,
+            observacao_autorizador: obs[id] ?? "",
+            motorista_id:
+              status === "aprovado" ? parseInt(motoristaId, 10) : null,
+            veiculo_id: status === "aprovado" ? parseInt(veiculoId, 10) : null,
+            autorizador: authUser?.name,
+          }; */
+
+          // Mocking API call
+          // await api.put(`/api/chamados/${targetId}/`, apiPayload);
+          await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate delay
+          updateReserva(targetId, {
+            status: status === "aprovado" ? "Aprovado" : "Negado",
+            obsAdmin: obs[id] ?? "",
+            motorista:
+              status === "aprovado" && motoristaId
+                ? motoristaMap[parseInt(motoristaId, 10)]
+                : undefined,
+            veiculo:
+              status === "aprovado" && veiculoId
+                ? veiculoMap[parseInt(veiculoId, 10)]
+                : undefined,
+            autorizador: authUser?.name,
+            data_autorizacao: now.toISOString().split("T")[0],
+            horario_autorizacao: `${String(now.getHours()).padStart(
+              2,
+              "0"
+            )}:${String(now.getMinutes()).padStart(2, "0")}`,
+          });
+          setObs((s) => ({ ...s, [targetId]: "" }));
+        })
+      );
+
       toast(
-        `Reserva ${status === "aprovado" ? "aprovada" : "negada"} com sucesso!`
+        `Reserva(s) ${
+          status === "aprovado" ? "aprovada(s)" : "negada(s)"
+        } com sucesso!`
       );
     } catch (error) {
       console.error(error);
       toast.error(
-        `Falha ao ${status === "aprovado" ? "aprovar" : "negar"} a reserva.`
+        `Falha ao ${
+          status === "aprovado" ? "aprovar" : "negar"
+        } a(s) reserva(s).`
       );
     }
   };
 
-  const statusSummary = React.useMemo(
-    () =>
-      reservas.reduce(
-        (acc, r) => {
-          const statusKey = r.status.toLowerCase() as keyof typeof acc;
-          acc[statusKey] = (acc[statusKey] || 0) + 1;
-          return acc;
-        },
-        { aprovado: 0, negado: 0, pendente: 0 }
-      ),
-    [reservas]
-  );
+  const handleConcludeReserva = async (id: number) => {
+    const reservaOriginal = reservas.find((r) => r.id === id);
+    if (!reservaOriginal) return;
 
-  const filteredReservas = React.useMemo(
-    () =>
-      [...reservas]
-        .sort(
-          (a, b) =>
-            new Date(b.data_solicitacao).getTime() -
-            new Date(a.data_solicitacao).getTime()
-        )
-        .filter((r) => !filter || r.status === filter),
-    [reservas, filter]
-  );
+    try {
+      await api.put(`/api/chamados/${id}/`, {
+        ...reservaOriginal,
+        status: "Concluido",
+      });
+      updateReserva(id, { status: "Concluido" });
+      toast.success("Reserva concluída com sucesso!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Falha ao concluir a reserva.");
+    }
+  };
+
+  const filteredReservas = React.useMemo(() => {
+    let data = [...reservas];
+
+    if (filter) {
+      data = data.filter((r) => r.status === filter);
+    }
+
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      const fieldMatch = lowerSearch.match(/^(\w+):(.+)$/);
+
+      data = data.filter((r) => {
+        const motoristaName = r.motorista
+          ? motoristaMap[parseInt(r.motorista, 10)] || r.motorista
+          : "";
+
+        const veiculoInfo = r.veiculo
+          ? veiculoMap[parseInt(r.veiculo, 10)] || r.veiculo
+          : "";
+
+        if (fieldMatch) {
+          const [, field, value] = fieldMatch;
+          const cleanValue = value.trim();
+
+          switch (field) {
+            case "passageiros":
+              return r.passageiros.some((p) =>
+                p.toLowerCase().includes(cleanValue)
+              );
+            case "motorista":
+              return (
+                motoristaName &&
+                motoristaName.toLowerCase().includes(cleanValue)
+              );
+            case "veiculo":
+              return (
+                veiculoInfo && veiculoInfo.toLowerCase().includes(cleanValue)
+              );
+            case "solicitante":
+              return r.solicitante.toLowerCase().includes(cleanValue);
+            case "unidade":
+              return r.unidade.toLowerCase().includes(cleanValue);
+            case "municipio":
+              return r.municipio.toLowerCase().includes(cleanValue);
+            case "obs":
+              return (
+                (r.obsSolicitante &&
+                  r.obsSolicitante.toLowerCase().includes(cleanValue)) ||
+                (r.obsAdmin && r.obsAdmin.toLowerCase().includes(cleanValue))
+              );
+            case "autorizador":
+              return (
+                r.autorizador &&
+                r.autorizador.toLowerCase().includes(cleanValue)
+              );
+            default:
+              break;
+          }
+        }
+
+        return (
+          r.solicitante.toLowerCase().includes(lowerSearch) ||
+          r.unidade.toLowerCase().includes(lowerSearch) ||
+          r.municipio.toLowerCase().includes(lowerSearch) ||
+          (motoristaName &&
+            motoristaName.toLowerCase().includes(lowerSearch)) ||
+          (veiculoInfo && veiculoInfo.toLowerCase().includes(lowerSearch)) ||
+          (r.obsSolicitante &&
+            r.obsSolicitante.toLowerCase().includes(lowerSearch)) ||
+          (r.obsAdmin && r.obsAdmin.toLowerCase().includes(lowerSearch)) ||
+          (r.autorizador &&
+            r.autorizador.toLowerCase().includes(lowerSearch)) ||
+          r.passageiros.some((p) => p.toLowerCase().includes(lowerSearch)) ||
+          r.paradas.some((p) => p.toLowerCase().includes(lowerSearch))
+        );
+      });
+    }
+
+    return data.sort(
+      (a, b) =>
+        new Date(b.data_solicitacao).getTime() -
+        new Date(a.data_solicitacao).getTime()
+    );
+  }, [reservas, filter, searchTerm, motoristaMap, veiculoMap]);
+
+  const filterStatuses = [
+    "Todos",
+    "Pendente",
+    "Aprovado",
+    "Negado",
+    "Concluido",
+  ];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto bg-background text-foreground">
+    <div className="p-6 max-w-[95%] mx-auto bg-background text-foreground">
       <div className="flex gap-4 mb-6 items-center flex-wrap">
-        {["Pendente", "Aprovado", "Negado"].map((status) => {
-          const count =
-            statusSummary[status.toLowerCase() as keyof typeof statusSummary];
-          return (
-            <Badge
-              key={status}
-              className={cn(
-                "cursor-pointer flex items-center gap-2 font-semibold transition-all p-2",
-                getStatusBadgeClasses(status as Reserva["status"]),
-                filter === status ? "ring-2 ring-offset-2" : ""
-              )}
-              onClick={() => setFilter(filter === status ? null : status)}
-            >
-              {count || 0} {status}
-              {filter === status && (
-                <X
-                  size={14}
-                  className="ml-1 cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFilter(null);
-                  }}
-                />
-              )}
-            </Badge>
-          );
-        })}
-        <Button
-          onClick={fetchReservas}
-          variant="outline"
-          className="flex items-center gap-2"
+        <Select
+          value={filter || "Todos"}
+          onValueChange={(value) => setFilter(value === "Todos" ? null : value)}
         >
-          <RefreshCw size={16} /> Atualizar
-        </Button>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {filterStatuses.map((status) => (
+              <SelectItem key={status} value={status}>
+                {status}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Tooltip delayDuration={500}>
+          <TooltipTrigger asChild>
+            <div className="w-[150px]">
+              <Input
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div className="text-xs space-y-1">
+              <p className="font-semibold">Regras de Busca:</p>
+              <p>• Geral: Digite qualquer termo</p>
+              <p>
+                • Específica:{" "}
+                <span className="font-mono font-bold text-muted-foreground">
+                  campo:valor
+                </span>
+              </p>
+              <p>• Campos: passageiros, motorista, obs, etc.</p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+
+        {selectedReservas.length >= 2 && (
+          <Button onClick={handleCombineReservas} variant="secondary">
+            <Link className="mr-2 h-4 w-4" />
+            Combinar Viagens ({selectedReservas.length})
+          </Button>
+        )}
       </div>
 
       <div className="border rounded-md overflow-hidden">
@@ -225,6 +547,18 @@ export default function AutorizarPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted text-left text-muted-foreground">
               <tr>
+                <th className="p-3 w-[50px]">
+                  <Checkbox
+                    checked={
+                      filteredReservas.some((r) => r.status === "Pendente") &&
+                      filteredReservas
+                        .filter((r) => r.status === "Pendente")
+                        .every((r) => selectedReservas.includes(r.id))
+                    }
+                    onCheckedChange={handleSelectAll}
+                  />
+                </th>
+                <th className="p-3">ID</th>
                 <th className="p-3">Data Solicitação</th>
                 <th className="p-3">Solicitante / Unidade</th>
                 <th className="p-3">Município</th>
@@ -236,7 +570,7 @@ export default function AutorizarPage() {
             <tbody>
               {filteredReservas.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center p-4">
+                  <td colSpan={8} className="text-center p-4">
                     Nenhuma reserva encontrada.
                   </td>
                 </tr>
@@ -249,16 +583,35 @@ export default function AutorizarPage() {
                         setExpanded(expanded === row.id ? null : row.id)
                       }
                     >
+                      <td
+                        className="p-3 whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {row.status === "Pendente" && (
+                          <Checkbox
+                            checked={selectedReservas.includes(row.id)}
+                            onCheckedChange={() => handleSelectReserva(row.id)}
+                          />
+                        )}
+                      </td>
+                      <td className="p-3 whitespace-nowrap">
+                        <span className="font-mono text-xs">#{row.id}</span>
+                        {row.viagemCompartilhadaId && (
+                          <div className="text-[10px] text-muted-foreground">
+                            #{row.viagemCompartilhadaId}
+                          </div>
+                        )}
+                      </td>
                       <td className="p-3 whitespace-nowrap">
                         {formatDateTime(
                           row.data_solicitacao,
                           row.horario_solicitacao
                         )}
                       </td>
-                      <td className="p-3 whitespace-nowrap">
+                      <td className="p-3">
                         {row.solicitante} / {row.unidade}
                       </td>
-                      <td className="p-3 whitespace-nowrap">{row.municipio}</td>
+                      <td className="p-3">{row.municipio}</td>
                       <td className="p-3 whitespace-nowrap">
                         {formatDateTime(row.data_saida, row.horario_saida)}
                       </td>
@@ -266,14 +619,82 @@ export default function AutorizarPage() {
                         {formatDateTime(row.data_retorno, row.horario_retorno)}
                       </td>
                       <td className="p-3 whitespace-nowrap">
-                        <Badge className={getStatusBadgeClasses(row.status)}>
-                          {row.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusBadgeClasses(row.status)}>
+                            {row.status}
+                          </Badge>
+                          {row.viagemCompartilhadaId && (
+                            <Tooltip delayDuration={500}>
+                              <TooltipTrigger asChild>
+                                <Link
+                                  className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewSharedRideId(
+                                      row.viagemCompartilhadaId!
+                                    );
+                                  }}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Viagem Compartilhada
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {row.status === "Aprovado" && (
+                            <AlertDialog>
+                              <Tooltip delayDuration={500}>
+                                <TooltipTrigger asChild>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <CheckCircle size={16} />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Concluir Solicitação</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <AlertDialogContent
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Concluir Solicitação?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja concluir esta
+                                    solicitação? Esta ação não pode ser
+                                    desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>
+                                    Cancelar
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() =>
+                                      handleConcludeReserva(row.id)
+                                    }
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                  >
+                                    Confirmar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
                       </td>
                     </tr>
                     {expanded === row.id && (
                       <tr>
-                        <td colSpan={6} className="p-4 bg-muted/30">
+                        <td colSpan={8} className="p-4 bg-muted/30">
                           <ReservaCard
                             reserva={row}
                             veiculoMap={veiculoMap}
@@ -387,6 +808,411 @@ export default function AutorizarPage() {
           </table>
         </div>
       </div>
+
+      <Dialog open={isCombineModalOpen} onOpenChange={setIsCombineModalOpen}>
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader>
+            <DialogTitle>Combinar Viagens</DialogTitle>
+            <DialogDescription>
+              Defina os detalhes da viagem compartilhada. As informações abaixo
+              serão aplicadas a todas as reservas selecionadas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="data_saida">Data Saída</Label>
+                <Input
+                  id="data_saida"
+                  type="date"
+                  value={combineFormData.data_saida}
+                  onChange={(e) =>
+                    setCombineFormData((prev) => ({
+                      ...prev,
+                      data_saida: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="horario_saida">Horário Saída</Label>
+                <Input
+                  id="horario_saida"
+                  type="time"
+                  value={combineFormData.horario_saida}
+                  onChange={(e) =>
+                    setCombineFormData((prev) => ({
+                      ...prev,
+                      horario_saida: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="data_retorno">Data Retorno</Label>
+                <Input
+                  id="data_retorno"
+                  type="date"
+                  value={combineFormData.data_retorno}
+                  onChange={(e) =>
+                    setCombineFormData((prev) => ({
+                      ...prev,
+                      data_retorno: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="horario_retorno">Horário Retorno</Label>
+                <Input
+                  id="horario_retorno"
+                  type="time"
+                  value={combineFormData.horario_retorno}
+                  onChange={(e) =>
+                    setCombineFormData((prev) => ({
+                      ...prev,
+                      horario_retorno: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Paradas */}
+            <div className="grid gap-2">
+              <Label>Paradas</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={paradaInput}
+                  onChange={(e) => setParadaInput(e.target.value)}
+                  placeholder="Adicionar parada..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (paradaInput.trim()) {
+                        setCombineFormData((prev) => ({
+                          ...prev,
+                          paradas: [...prev.paradas, paradaInput.trim()],
+                        }));
+                        setParadaInput("");
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (paradaInput.trim()) {
+                      setCombineFormData((prev) => ({
+                        ...prev,
+                        paradas: [...prev.paradas, paradaInput.trim()],
+                      }));
+                      setParadaInput("");
+                    }
+                  }}
+                >
+                  <PlusCircleIcon className="w-4 h-4 mr-2" /> Adicionar
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {combineFormData.paradas.map((item, i) => (
+                  <Badge key={i} variant="secondary">
+                    {item}
+                    <button
+                      type="button"
+                      className="ml-2"
+                      onClick={() => {
+                        setCombineFormData((prev) => ({
+                          ...prev,
+                          paradas: prev.paradas.filter((_, idx) => idx !== i),
+                        }));
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Passageiros */}
+            <div className="grid gap-2">
+              <Label>Passageiros</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={passageiroInput}
+                  onChange={(e) => setPassageiroInput(e.target.value)}
+                  placeholder="Adicionar passageiro..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (passageiroInput.trim()) {
+                        setCombineFormData((prev) => ({
+                          ...prev,
+                          passageiros: [
+                            ...prev.passageiros,
+                            passageiroInput.trim(),
+                          ],
+                        }));
+                        setPassageiroInput("");
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (passageiroInput.trim()) {
+                      setCombineFormData((prev) => ({
+                        ...prev,
+                        passageiros: [
+                          ...prev.passageiros,
+                          passageiroInput.trim(),
+                        ],
+                      }));
+                      setPassageiroInput("");
+                    }
+                  }}
+                >
+                  <PlusCircleIcon className="w-4 h-4 mr-2" /> Adicionar
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {combineFormData.passageiros.map((item, i) => (
+                  <Badge key={i} variant="secondary">
+                    {item}
+                    <button
+                      type="button"
+                      className="ml-2"
+                      onClick={() => {
+                        setCombineFormData((prev) => ({
+                          ...prev,
+                          passageiros: prev.passageiros.filter(
+                            (_, idx) => idx !== i
+                          ),
+                        }));
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Motorista</Label>
+                <Select
+                  value={combineFormData.motorista_id}
+                  onValueChange={(value) =>
+                    setCombineFormData((prev) => ({
+                      ...prev,
+                      motorista_id: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um motorista" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {motoristas.map((m) => (
+                      <SelectItem
+                        key={m.id}
+                        value={String(m.id)}
+                        disabled={m.status !== "disponivel"}
+                      >
+                        {m.nome_motorista}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Veículo</Label>
+                <Select
+                  value={combineFormData.veiculo_id}
+                  onValueChange={(value) =>
+                    setCombineFormData((prev) => ({
+                      ...prev,
+                      veiculo_id: value,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um veículo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {veiculos.map((v) => (
+                      <SelectItem
+                        key={v.id}
+                        value={String(v.id)}
+                        disabled={v.status !== "disponivel"}
+                      >
+                        #{v.id} - {v.modelo} - {v.placa}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="observacao">Observação</Label>
+              <Textarea
+                id="observacao"
+                value={combineFormData.observacao}
+                onChange={(e) =>
+                  setCombineFormData((prev) => ({
+                    ...prev,
+                    observacao: e.target.value,
+                  }))
+                }
+                placeholder="Observação para todas as reservas"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCombineModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmCombine}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!viewSharedRideId}
+        onOpenChange={(open) => !open && setViewSharedRideId(null)}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Viagem Compartilhada</DialogTitle>
+            <DialogDescription>
+              Informações unificadas da viagem #{viewSharedRideId}
+            </DialogDescription>
+          </DialogHeader>
+          {viewSharedRideId &&
+            (() => {
+              const sharedReservas = reservas.filter(
+                (r) => r.viagemCompartilhadaId === viewSharedRideId
+              );
+              const first = sharedReservas[0];
+              if (!first) return null;
+
+              const solicitantes = Array.from(
+                new Set(
+                  sharedReservas.map((r) => `${r.solicitante} / ${r.unidade}`)
+                )
+              );
+              const passageiros = Array.from(
+                new Set(sharedReservas.flatMap((r) => r.passageiros))
+              );
+              const paradas = Array.from(
+                new Set(sharedReservas.flatMap((r) => r.paradas))
+              );
+
+              return (
+                <div className="grid gap-6 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Data/Hora Saída
+                      </h4>
+                      <p className="font-medium">
+                        {formatDateTime(first.data_saida, first.horario_saida)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Data/Hora Retorno
+                      </h4>
+                      <p className="font-medium">
+                        {formatDateTime(
+                          first.data_retorno,
+                          first.horario_retorno
+                        )}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Motorista
+                      </h4>
+                      <p className="font-medium">
+                        {first.motorista
+                          ? motoristaMap[parseInt(first.motorista, 10)] ||
+                            first.motorista
+                          : "-"}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Veículo
+                      </h4>
+                      <p className="font-medium">
+                        {first.veiculo
+                          ? veiculoMap[parseInt(first.veiculo, 10)] ||
+                            first.veiculo
+                          : "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Solicitantes
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {solicitantes.map((s, i) => (
+                        <Badge key={i} variant="secondary">
+                          {s}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Passageiros ({passageiros.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {passageiros.map((p, i) => (
+                        <Badge key={i} variant="outline">
+                          {p}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Paradas
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {paradas.map((p, i) => (
+                        <Badge key={i} variant="outline" className="bg-muted">
+                          {p}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  {first.obsAdmin && (
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Observações do Administrador
+                      </h4>
+                      <p className="text-sm">{first.obsAdmin}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

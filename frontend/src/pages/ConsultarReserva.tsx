@@ -2,16 +2,28 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import api from "../api";
-import { useReservas, type Reserva } from "@/pages/context/ReservaContext";
-import { useAuth } from "../pages/context/AdminContext";
+import { useReservas, type Reserva } from "@/context/reserva-context-hook";
+import { useAuth } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, X, ArrowUpDown } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
-import { cn } from "@/lib/utils";
+
+import { mockMotoristas, mockVeiculos } from "@/mocks/data";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type SortConfig = {
   key: keyof Reserva;
@@ -42,15 +54,8 @@ const getStatusBadgeClasses = (status: Reserva["status"]) => {
 };
 
 export default function ConsultarReservaPage() {
-  const { reservas, fetchReservas } = useReservas();
-const { user: authUser, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="p-6">
-        <p>A carregar as suas reservas...</p>
-      </div>
-    );
-  }
+  const { reservas, fetchReservas, cancelReserva } = useReservas();
+  const { user: authUser } = useAuth();
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [filter, setFilter] = React.useState<string | null>(null);
   const [motoristas, setMotoristas] = React.useState<Motorista[]>([]);
@@ -62,19 +67,19 @@ const { user: authUser, loading } = useAuth();
     key: "data_solicitacao",
     direction: "descending",
   });
+  const [timeRange, setTimeRange] = React.useState<
+    "24h" | "7d" | "30d" | "custom"
+  >("24h");
   const perPage = 10;
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   React.useEffect(() => {
     fetchReservas();
     const fetchOptions = async () => {
       try {
-        const [mRes, vRes] = await Promise.all([
-          api.get("/motoristas/"),
-          api.get("/veiculos/"),
-        ]);
-        setMotoristas(mRes.data);
-        setVeiculos(vRes.data);
-      } catch (err) {
+        setMotoristas(mockMotoristas);
+        setVeiculos(mockVeiculos);
+      } catch {
         toast.error("Não foi possível carregar motoristas ou veículos.");
       }
     };
@@ -89,6 +94,7 @@ const { user: authUser, loading } = useAuth();
       ),
     [motoristas]
   );
+
   const veiculoMap = React.useMemo(
     () =>
       veiculos.reduce(
@@ -118,17 +124,118 @@ const { user: authUser, loading } = useAuth();
       data = data.filter((r) => r.solicitante === authUser.name);
     }
 
-    if (filter) data = data.filter((r) => r.status === filter);
+    if (timeRange === "custom") {
+      if (startDate) {
+        data = data.filter(
+          (r) => new Date(r.data_solicitacao) >= new Date(startDate)
+        );
+      }
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        data = data.filter((r) => new Date(r.data_solicitacao) <= endOfDay);
+      }
+    } else {
+      const now = new Date();
+      data = data.filter((r) => {
+        const solicitacaoDate = new Date(
+          `${r.data_solicitacao}T${r.horario_solicitacao}`
+        );
+        const diffTime = now.getTime() - solicitacaoDate.getTime();
+        const diffDays = diffTime / (1000 * 3600 * 24);
 
-    if (startDate) {
-      data = data.filter(
-        (r) => new Date(r.data_solicitacao) >= new Date(startDate)
-      );
+        if (timeRange === "24h") return diffTime <= 24 * 60 * 60 * 1000;
+        if (timeRange === "7d") return diffDays <= 7;
+        if (timeRange === "30d") return diffDays <= 30;
+        return true;
+      });
     }
-    if (endDate) {
-      const endOfDay = new Date(endDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      data = data.filter((r) => new Date(r.data_solicitacao) <= endOfDay);
+
+    if (filter) {
+      data = data.filter((r) => r.status === filter);
+    }
+
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      const fieldMatch = lowerSearch.match(/^(\w+):(.+)$/);
+
+      data = data.filter((r) => {
+        const motoristaName = r.motorista
+          ? motoristaMap[parseInt(r.motorista, 10)] || r.motorista
+          : "";
+        const veiculoInfo = r.veiculo
+          ? veiculoMap[parseInt(r.veiculo, 10)] || r.veiculo
+          : "";
+
+        if (fieldMatch) {
+          const [, field, value] = fieldMatch;
+          const cleanValue = value.trim();
+
+          switch (field) {
+            case "passageiros":
+              return r.passageiros.some((p) =>
+                p.toLowerCase().includes(cleanValue)
+              );
+            case "motorista":
+              return (
+                motoristaName &&
+                motoristaName.toLowerCase().includes(cleanValue)
+              );
+            case "veiculo":
+              return (
+                veiculoInfo && veiculoInfo.toLowerCase().includes(cleanValue)
+              );
+            case "solicitante":
+              return r.solicitante.toLowerCase().includes(cleanValue);
+            case "unidade":
+              return r.unidade.toLowerCase().includes(cleanValue);
+            case "municipio":
+              return r.municipio.toLowerCase().includes(cleanValue);
+            case "obs":
+              return (
+                (r.obsSolicitante &&
+                  r.obsSolicitante.toLowerCase().includes(cleanValue)) ||
+                (r.obsAdmin && r.obsAdmin.toLowerCase().includes(cleanValue))
+              );
+            case "autorizador":
+              return (
+                r.autorizador &&
+                r.autorizador.toLowerCase().includes(cleanValue)
+              );
+            case "id":
+              return (
+                r.id.toString().includes(cleanValue.replace("#", "")) ||
+                (r.viagemCompartilhadaId &&
+                  r.viagemCompartilhadaId
+                    .toString()
+                    .includes(cleanValue.replace("#", "")))
+              );
+            default:
+              break;
+          }
+        }
+
+        return (
+          r.solicitante.toLowerCase().includes(lowerSearch) ||
+          r.unidade.toLowerCase().includes(lowerSearch) ||
+          r.municipio.toLowerCase().includes(lowerSearch) ||
+          (motoristaName &&
+            motoristaName.toLowerCase().includes(lowerSearch)) ||
+          (veiculoInfo && veiculoInfo.toLowerCase().includes(lowerSearch)) ||
+          (r.obsSolicitante &&
+            r.obsSolicitante.toLowerCase().includes(lowerSearch)) ||
+          (r.obsAdmin && r.obsAdmin.toLowerCase().includes(lowerSearch)) ||
+          (r.autorizador &&
+            r.autorizador.toLowerCase().includes(lowerSearch)) ||
+          r.passageiros.some((p) => p.toLowerCase().includes(lowerSearch)) ||
+          r.paradas.some((p) => p.toLowerCase().includes(lowerSearch)) ||
+          r.id.toString().includes(lowerSearch.replace("#", "")) ||
+          (r.viagemCompartilhadaId &&
+            r.viagemCompartilhadaId
+              .toString()
+              .includes(lowerSearch.replace("#", "")))
+        );
+      });
     }
 
     if (sortConfig !== null) {
@@ -139,36 +246,32 @@ const { user: authUser, loading } = useAuth();
         if (aValue === null || aValue === undefined) return 1;
         if (bValue === null || bValue === undefined) return -1;
 
-        if (aValue < bValue) {
+        if (aValue < bValue)
           return sortConfig.direction === "ascending" ? -1 : 1;
-        }
-        if (aValue > bValue) {
+        if (aValue > bValue)
           return sortConfig.direction === "ascending" ? 1 : -1;
-        }
         return 0;
       });
     }
 
     return data;
-  }, [reservas, filter, authUser, startDate, endDate, sortConfig]);
+  }, [
+    reservas,
+    filter,
+    authUser,
+    startDate,
+    endDate,
+    sortConfig,
+    timeRange,
+    searchTerm,
+    motoristaMap,
+    veiculoMap,
+  ]);
 
   const totalPages = Math.ceil(sortedAndFilteredReservas.length / perPage);
   const pageData = sortedAndFilteredReservas.slice(
     (currentPage - 1) * perPage,
     currentPage * perPage
-  );
-
-  const statusSummary = React.useMemo(
-    () =>
-      sortedAndFilteredReservas.reduce(
-        (acc, r) => {
-          const statusKey = r.status.toLowerCase() as keyof typeof acc;
-          acc[statusKey] = (acc[statusKey] || 0) + 1;
-          return acc;
-        },
-        { aprovado: 0, negado: 0, pendente: 0 }
-      ),
-    [sortedAndFilteredReservas]
   );
 
   const SortableHeader = ({
@@ -178,7 +281,7 @@ const { user: authUser, loading } = useAuth();
     columnKey: keyof Reserva;
     children: React.ReactNode;
   }) => (
-    <th className="px-2 py-2">
+    <th className="px-2 py-2 whitespace-nowrap">
       <Button
         variant="ghost"
         onClick={() => requestSort(columnKey)}
@@ -190,146 +293,277 @@ const { user: authUser, loading } = useAuth();
     </th>
   );
 
-  const filterStatuses = ["Pendente", "Aprovado", "Negado"];
+  const filterStatuses = [
+    "Todos",
+    "Pendente",
+    "Aprovado",
+    "Negado",
+    "Cancelado",
+    "Concluido",
+  ];
 
   return (
-    <div className="p-4 sm:p-6 w-full bg-background text-foreground">
-      <div className="flex gap-4 mb-6 items-center flex-wrap">
-        {filterStatuses.map((status) => {
-          const count =
-            statusSummary[status.toLowerCase() as keyof typeof statusSummary];
-          return (
-            <Badge
-              key={status}
-              className={cn(
-                "cursor-pointer flex items-center gap-2 font-semibold transition-all p-2",
-                getStatusBadgeClasses(status as Reserva["status"]),
-                filter === status ? "ring-2 ring-offset-2" : ""
-              )}
-              onClick={() => setFilter(filter === status ? null : status)}
-            >
-              {count || 0} {status}
-              {filter === status && (
-                <X
-                  size={14}
-                  className="ml-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFilter(null);
-                  }}
+    <div className="p-4 sm:p-6 w-full mx-auto bg-background text-foreground overflow-x-hidden">
+      {/* FILTER BAR */}
+      <div className="flex flex-col gap-4 mb-6 min-w-0">
+        <div className="flex gap-4 items-center flex-wrap min-w-0">
+          <Select
+            value={filter || "Todos"}
+            onValueChange={(value) =>
+              setFilter(value === "Todos" ? null : value)
+            }
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {filterStatuses.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Tooltip delayDuration={2000}>
+            <TooltipTrigger asChild>
+              <div className="w-[150px]">
+                <Input
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
                 />
-              )}
-            </Badge>
-          );
-        })}
-        <Button
-          onClick={fetchReservas}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <RefreshCw size={16} /> Atualizar
-        </Button>
-        <div className="flex gap-2 items-center ml-auto">
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">-</span>
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-auto"
-          />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-xs space-y-1">
+                <p className="font-semibold">Regras de Busca:</p>
+                <p>• Geral: Digite qualquer termo</p>
+                <p>
+                  • Específica:{" "}
+                  <span className="font-mono font-bold">campo:valor</span>
+                </p>
+                <p>• Campos: passageiros, motorista, obs, etc.</p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <div className="flex gap-2 items-center ml-auto flex-wrap min-w-0">
+            <div className="flex bg-muted rounded-md p-1 gap-1">
+              {(["24h", "7d", "30d"] as const).map((range) => (
+                <Button
+                  key={range}
+                  variant={timeRange === range ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => {
+                    setTimeRange(range);
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                  className="h-8"
+                >
+                  {range === "24h"
+                    ? "24h"
+                    : range === "7d"
+                    ? "7 dias"
+                    : "30 dias"}
+                </Button>
+              ))}
+            </div>
+
+            <div className="h-4 w-px bg-border mx-2" />
+
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setTimeRange("custom");
+              }}
+              className="w-auto h-9"
+            />
+            <span className="text-sm text-muted-foreground">-</span>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setTimeRange("custom");
+              }}
+              className="w-auto h-9"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="border rounded-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted text-left text-muted-foreground">
-              <tr>
-                <SortableHeader columnKey="data_solicitacao">
+      {/* TABLE */}
+      <div className="border rounded-md overflow-x-auto w-full">
+        <table className="w-full text-sm table-fixed">
+          <thead className="bg-muted text-left text-muted-foreground">
+            <tr>
+              <th className="px-2 py-2 w-[60px]">
+                <Button
+                  variant="ghost"
+                  onClick={() => requestSort("id")}
+                  className="px-2 py-1 h-auto w-full justify-start text-left"
+                >
+                  ID
+                  <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+              </th>
+
+              <th className="px-2 py-2 w-[150px] whitespace-nowrap">
+                <Button
+                  variant="ghost"
+                  onClick={() => requestSort("data_solicitacao")}
+                  className="px-2 py-1 h-auto w-full justify-start text-left"
+                >
                   Data Solicitação
-                </SortableHeader>
-                <SortableHeader columnKey="solicitante">
+                  <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+              </th>
+
+              <th className="px-2 py-2 w-[220px]">
+                <Button
+                  variant="ghost"
+                  onClick={() => requestSort("solicitante")}
+                  className="px-2 py-1 h-auto w-full justify-start text-left"
+                >
                   Solicitante / Unidade
-                </SortableHeader>
-                <SortableHeader columnKey="municipio">Município</SortableHeader>
-                <SortableHeader columnKey="data_saida">
+                  <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+              </th>
+
+              <th className="px-2 py-2 w-[140px]">
+                <Button
+                  variant="ghost"
+                  onClick={() => requestSort("municipio")}
+                  className="px-2 py-1 h-auto w-full justify-start text-left"
+                >
+                  Município
+                  <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+              </th>
+
+              <th className="px-2 py-2 w-[150px] whitespace-nowrap">
+                <Button
+                  variant="ghost"
+                  onClick={() => requestSort("data_saida")}
+                  className="px-2 py-1 h-auto w-full justify-start text-left"
+                >
                   Data Saída
-                </SortableHeader>
-                <SortableHeader columnKey="data_retorno">
+                  <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+              </th>
+
+              <th className="px-2 py-2 w-[150px] whitespace-nowrap">
+                <Button
+                  variant="ghost"
+                  onClick={() => requestSort("data_retorno")}
+                  className="px-2 py-1 h-auto w-full justify-start text-left"
+                >
                   Data Retorno
-                </SortableHeader>
-                <SortableHeader columnKey="status">Status</SortableHeader>
-                <SortableHeader columnKey="autorizador">
+                  <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+              </th>
+
+              <th className="px-2 py-2 w-[120px]">
+                <Button
+                  variant="ghost"
+                  onClick={() => requestSort("status")}
+                  className="px-2 py-1 h-auto w-full justify-start text-left"
+                >
+                  Status
+                  <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+              </th>
+
+              <th className="px-2 py-2 w-[140px]">
+                <Button
+                  variant="ghost"
+                  onClick={() => requestSort("autorizador")}
+                  className="px-2 py-1 h-auto w-full justify-start text-left"
+                >
                   Autorizador
-                </SortableHeader>
+                  <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {pageData.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="text-center p-4">
+                  Nenhuma reserva encontrada.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {pageData.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center p-4">
-                    Nenhuma reserva encontrada.
-                  </td>
-                </tr>
-              ) : (
-                pageData.map((row) => (
-                  <React.Fragment key={row.id}>
-                    <tr
-                      className="border-t cursor-pointer hover:bg-muted/20"
-                      onClick={() =>
-                        setExpanded(expanded === row.id ? null : row.id)
-                      }
-                    >
-                      <td className="p-2 whitespace-nowrap">
-                        {formatDateTime(
-                          row.data_solicitacao,
-                          row.horario_solicitacao
-                        )}
-                      </td>
-                      <td className="p-2 whitespace-nowrap">
-                        {row.solicitante} / {row.unidade}
-                      </td>
-                      <td className="p-2 whitespace-nowrap">{row.municipio}</td>
-                      <td className="p-2 whitespace-nowrap">
-                        {formatDateTime(row.data_saida, row.horario_saida)}
-                      </td>
-                      <td className="p-2 whitespace-nowrap">
-                        {formatDateTime(row.data_retorno, row.horario_retorno)}
-                      </td>
-                      <td className="p-2 whitespace-nowrap">
-                        <Badge className={getStatusBadgeClasses(row.status)}>
-                          {row.status}
-                        </Badge>
-                      </td>
-                      <td className="p-2 whitespace-nowrap">
-                        {row.autorizador ?? "-"}
+            ) : (
+              pageData.map((row) => (
+                <React.Fragment key={row.id}>
+                  <tr
+                    className="border-t cursor-pointer hover:bg-muted/20"
+                    onClick={() =>
+                      setExpanded(expanded === row.id ? null : row.id)
+                    }
+                  >
+                    <td className="p-2 break-words">
+                      <span className="font-mono text-xs">#{row.id}</span>
+                      {row.viagemCompartilhadaId && (
+                        <div className="text-[10px] text-muted-foreground">
+                          #{row.viagemCompartilhadaId}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-2">
+                      {formatDateTime(
+                        row.data_solicitacao,
+                        row.horario_solicitacao
+                      )}
+                    </td>
+                    <td className="p-2 break-words">
+                      {row.solicitante} / {row.unidade}
+                    </td>
+                    <td className="p-2">{row.municipio}</td>
+                    <td className="p-2">
+                      {formatDateTime(row.data_saida, row.horario_saida)}
+                    </td>
+                    <td className="p-2">
+                      {formatDateTime(row.data_retorno, row.horario_retorno)}
+                    </td>
+                    <td className="p-2">
+                      <Badge className={getStatusBadgeClasses(row.status)}>
+                        {row.status}
+                      </Badge>
+                    </td>
+                    <td className="p-2 break-words">
+                      {row.autorizador ?? "-"}
+                    </td>
+                  </tr>
+
+                  {expanded === row.id && (
+                    <tr>
+                      <td colSpan={8} className="p-4 bg-muted/30">
+                        <ReservaCard
+                          reserva={row}
+                          veiculoMap={veiculoMap}
+                          motoristaMap={motoristaMap}
+                          onCancel={(id) =>
+                            cancelReserva(id, authUser?.name || "Usuário")
+                          }
+                        />
                       </td>
                     </tr>
-                    {expanded === row.id && (
-                      <tr>
-                        <td colSpan={7} className="p-4 bg-muted/30">
-                          <ReservaCard
-                            reserva={row}
-                            veiculoMap={veiculoMap}
-                            motoristaMap={motoristaMap}
-                          />
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  )}
+                </React.Fragment>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
+      {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex justify-end items-center gap-2 mt-4">
           <Button

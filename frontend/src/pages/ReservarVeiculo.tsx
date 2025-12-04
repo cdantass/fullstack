@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,372 +24,580 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Loader2Icon, PlusCircleIcon, X } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  CalendarIcon,
+  Loader2Icon,
+  PlusCircleIcon,
+  X,
+  InfoIcon,
+  AlertTriangleIcon,
+} from "lucide-react";
 import { toast } from "sonner";
-import api from "../api";
-type FormErrors = {
-  [key: string]: boolean;
-};
+// import api from "@/api";
+import { cn } from "@/lib/utils";
+import { useReservas } from "@/context/reserva-context-hook";
+
+/* -------------------------------------------------------------------------- */
+/*                                   SCHEMA                                   */
+/* -------------------------------------------------------------------------- */
+
+const formSchema = z
+  .object({
+    municipio: z.string().min(1, "Selecione um município."),
+    paradas: z.array(z.string()).min(1, "Adicione pelo menos uma parada."),
+    passageiros: z
+      .array(z.string())
+      .min(1, "Adicione pelo menos um passageiro.")
+      .max(4, "Máximo de 4 passageiros."),
+    dataSaida: z.date({ message: "Selecione a data de saída." }),
+    dataRetorno: z.date({ message: "Selecione a data de retorno." }),
+    horarioSaida: z.string().min(1, "Informe o horário de saída."),
+    horarioRetorno: z.string().min(1, "Informe o horário de retorno."),
+    observacao: z.string().optional(),
+  })
+  .refine((data) => data.dataRetorno >= data.dataSaida, {
+    message: "A data de retorno não pode ser anterior à data de saída.",
+    path: ["dataRetorno"],
+  });
+
+/* -------------------------------------------------------------------------- */
+/*                                SUBCOMPONENTS                               */
+/* -------------------------------------------------------------------------- */
+
+function TagInput({
+  label,
+  field,
+  inputValue,
+  setInputValue,
+  pending,
+  setPending,
+  onAdd,
+  placeholder,
+  hasError,
+}: {
+  label: string;
+  field: any;
+  inputValue: string;
+  setInputValue: (v: string) => void;
+  pending: boolean;
+  setPending: (v: boolean) => void;
+  onAdd: () => void;
+  placeholder: string;
+  hasError?: boolean;
+}) {
+  return (
+    <FormItem>
+      <FormLabel>{label}</FormLabel>
+
+      <div className="flex gap-2">
+        <Input
+          className={cn(
+            "bg-white",
+            hasError && "ring-2 ring-red-500 focus-visible:ring-red-500"
+          )}
+          value={inputValue}
+          placeholder={placeholder}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            if (!e.target.value.trim()) setPending(false);
+          }}
+          onBlur={() => setPending(inputValue.trim().length > 0)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onAdd();
+            }
+          }}
+        />
+
+        <Button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            onAdd();
+          }}
+        >
+          <PlusCircleIcon className="w-4 h-4 mr-2" /> Adicionar
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mt-2">
+        {field.value.map((item: string, i: number) => (
+          <Badge key={i} variant="secondary">
+            {item}
+            <button
+              type="button"
+              className="ml-2"
+              onClick={() => {
+                const filtered = field.value.filter(
+                  (_: any, idx: number) => idx !== i
+                );
+                field.onChange(filtered);
+              }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </Badge>
+        ))}
+      </div>
+
+      {pending && (
+        <p className="text-sm font-medium text-destructive mt-1">
+          Clique em "Adicionar" para incluir este item.
+        </p>
+      )}
+
+      <FormMessage />
+    </FormItem>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   PAGE                                     */
+/* -------------------------------------------------------------------------- */
 
 export default function ReservaPage() {
-  // --- FORM STATE ---
   const [municipios, setMunicipios] = useState<{ id: number; nome: string }[]>(
     []
   );
-  const [municipio, setMunicipio] = useState<string>("");
-  const [paradas, setParadas] = useState<string[]>([]);
-  const [parada, setParada] = useState("");
-  const [passageiros, setPassageiros] = useState<string[]>([]);
-  const [passageiro, setPassageiro] = useState("");
-  const [dataSaida, setDataSaida] = useState<Date | undefined>(new Date());
-  const [dataRetorno, setDataRetorno] = useState<Date | undefined>(new Date());
-  const [horarioSaida, setHorarioSaida] = useState("");
-  const [horarioRetorno, setHorarioRetorno] = useState("");
-  const [observacao, setObservacao] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
+
+  const [paradaInput, setParadaInput] = useState("");
+  const [passageiroInput, setPassageiroInput] = useState("");
+  const [paradaPending, setParadaPending] = useState(false);
+  const [passageiroPending, setPassageiroPending] = useState(false);
+  const [paradaError, setParadaError] = useState(false);
+  const [passageiroError, setPassageiroError] = useState(false);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      municipio: "",
+      paradas: [],
+      passageiros: [],
+      horarioSaida: "",
+      horarioRetorno: "",
+      observacao: "",
+      dataSaida: new Date(),
+      dataRetorno: new Date(),
+    },
+  });
+
+  const { addReserva } = useReservas();
+
+  /* ------------------------------- LOAD DATA -------------------------------- */
 
   useEffect(() => {
-    const fetchMunicipios = async () => {
-      try {
-        const res = await api.get("/municipios/");
-        setMunicipios(res.data);
-        if (res.data.length > 0) {
-          setMunicipio(String(res.data[0].id));
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error("Erro ao carregar municípios.");
-      }
-    };
-    fetchMunicipios();
+    // Mocking API call
+    // api
+    //   .get("/api/municipios/")
+    //   .then((res) => setMunicipios(res.data))
+    //   .catch(() => toast.error("Erro ao carregar municípios."));
+
+    setMunicipios([
+      { id: 1, nome: "Aracaju" },
+      { id: 2, nome: "Nossa Senhora do Socorro" },
+      { id: 3, nome: "Lagarto" },
+      { id: 4, nome: "Itabaiana" },
+      { id: 5, nome: "São Cristóvão" },
+      { id: 6, nome: "Estância" },
+    ]);
   }, []);
 
-  const handleAddParada = () => {
-    if (parada.trim()) {
-      setParadas([...paradas, parada.trim()]);
-      setParada("");
-      setErrors((prev) => ({ ...prev, parada: false, paradas: false }));
-    } else {
-      setErrors((prev) => ({ ...prev, parada: true }));
+  /* ------------------------------ HANDLERS ---------------------------------- */
+
+  const addItem = (
+    fieldName: "paradas" | "passageiros",
+    value: string,
+    limit?: number
+  ) => {
+    if (!value.trim()) {
+      if (fieldName === "paradas") setParadaError(true);
+      if (fieldName === "passageiros") setPassageiroError(true);
+      return false;
     }
+
+    if (fieldName === "paradas") setParadaError(false);
+    if (fieldName === "passageiros") setPassageiroError(false);
+
+    const curr = form.getValues(fieldName);
+
+    if (limit && curr.length >= limit) {
+      toast.error(`Você pode adicionar no máximo ${limit} ${fieldName}.`);
+      return false;
+    }
+
+    form.setValue(fieldName, [...curr, value.trim()]);
+    return true;
   };
 
-  const handleAddPassageiro = () => {
-    if (passageiros.length >= 4) {
-      toast.error("Você pode adicionar no máximo 4 passageiros.");
-      return;
-    }
-    if (passageiro.trim()) {
-      setPassageiros([...passageiros, passageiro.trim()]);
-      setPassageiro("");
-      setErrors((prev) => ({ ...prev, passageiro: false, passageiros: false }));
-    } else {
-      setErrors((prev) => ({ ...prev, passageiro: true }));
-    }
-  };
-
-  const resetForm = () => {
-    setMunicipio(municipios.length > 0 ? String(municipios[0].id) : "");
-    setParadas([]);
-    setParada("");
-    setPassageiros([]);
-    setPassageiro("");
-    setDataSaida(new Date());
-    setDataRetorno(new Date());
-    setHorarioSaida("");
-    setHorarioRetorno("");
-    setObservacao("");
-    setErrors({});
-  };
-
-  const validateForm = () => {
-    const newErrors: FormErrors = {};
-    if (!municipio) newErrors.municipio = true;
-    if (paradas.length === 0) newErrors.paradas = true;
-    if (passageiros.length === 0) newErrors.passageiros = true;
-    if (!dataSaida) newErrors.dataSaida = true;
-    if (!dataRetorno) newErrors.dataRetorno = true;
-    if (!horarioSaida) newErrors.horarioSaida = true;
-    if (!horarioRetorno) newErrors.horarioRetorno = true;
-    if (dataRetorno && dataSaida && dataRetorno < dataSaida) {
-      newErrors.dataRetorno = true;
-      toast.error("A data de retorno não pode ser anterior à data de saída.");
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) {
-      toast.error("Por favor, preencha todos os campos destacados.");
-      return;
-    }
-
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
 
     const formatDate = (date: Date) => date.toISOString().split("T")[0];
 
-    const payload = {
-      data_saida: formatDate(dataSaida!),
-      horario_saida: horarioSaida,
-      data_retorno: formatDate(dataRetorno!),
-      horario_retorno: horarioRetorno,
-      passageiro1: passageiros[0] || "",
-      passageiro2: passageiros[1] || "",
-      passageiro3: passageiros[2] || "",
-      passageiro4: passageiros[3] || "",
-      municipio: Number(municipio),
-      observacao,
-      paradas: paradas.map((p) => ({ local: p })),
+    // Mock payload for Context
+    const payload: any = {
+      id: Date.now(),
+      status: "Pendente",
+      data_solicitacao: new Date().toISOString().split("T")[0],
+      horario_solicitacao: new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      data_saida: formatDate(values.dataSaida),
+      horario_saida: values.horarioSaida,
+      data_retorno: formatDate(values.dataRetorno),
+      horario_retorno: values.horarioRetorno,
+      municipio:
+        municipios.find((m) => String(m.id) === values.municipio)?.nome ||
+        "Destino",
+      observacao: values.observacao || "",
+      passageiros: values.passageiros,
+      paradas: values.paradas,
+      solicitante: "Usuário Teste", // Mock user
+      unidade: "Unidade Teste", // Mock unit
     };
 
     try {
-      await api.post("/chamados/", payload);
-      toast.success("Solicitação de reserva enviada com sucesso!");
-      resetForm();
-    } catch (err: any) {
-      console.error(err);
+      // Mocking API call
+      // await api.post("/api/chamados/", payload);
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate delay
+
+      addReserva(payload);
+
+      toast.success("Solicitação enviada!");
+
+      form.reset({
+        municipio: values.municipio,
+        paradas: [],
+        passageiros: [],
+        horarioSaida: "",
+        horarioRetorno: "",
+        observacao: "",
+        dataSaida: new Date(),
+        dataRetorno: new Date(),
+      });
+
+      setParadaInput("");
+      setPassageiroInput("");
+    } catch (error: any) {
       toast.error(
-        err.response?.data?.message ||
-          err.message ||
-          "Erro ao enviar solicitação."
+        error?.response?.data?.message || "Erro ao enviar solicitação."
       );
     } finally {
       setLoading(false);
     }
   };
 
+  /* -------------------------------------------------------------------------- */
+  /*                                  RENDER                                    */
+  /* -------------------------------------------------------------------------- */
+
   return (
-    <form onSubmit={handleSubmit} className="p-6 max-w-3xl w-full">
-      <Card>
-        <CardHeader>
-          <CardTitle>Reservar Veículo</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label>Município de destino</Label>
-            <Select
-              value={municipio}
-              onValueChange={(value) => {
-                setMunicipio(value);
-                setErrors((prev) => ({ ...prev, municipio: false }));
-              }}
-            >
-              <SelectTrigger
-                className={`bg-white ${
-                  errors.municipio ? "ring-2 ring-red-500" : ""
-                }`}
+    <div className="flex flex-col lg:flex-row gap-6 justify-center p-6 max-w-7xl mx-auto">
+      {/* LEFT COLUMN */}
+      <div className="max-w-3xl w-full">
+        <Card>
+          <CardHeader>
+            <CardTitle>Reservar Veículo</CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
               >
-                <SelectValue placeholder="Selecione o município" />
-              </SelectTrigger>
-              <SelectContent>
-                {municipios.map((m) => (
-                  <SelectItem key={m.id} value={String(m.id)}>
-                    {m.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                {/* MUNICÍPIO */}
+                <FormField
+                  control={form.control}
+                  name="municipio"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Município de destino</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Selecione o município" />
+                          </SelectTrigger>
+                        </FormControl>
 
-          <div className="space-y-2">
-            <Label>Paradas</Label>
-            <div className="flex gap-2">
-              <Input
-                className={`bg-white ${
-                  errors.parada || errors.paradas ? "ring-2 ring-red-500" : ""
-                }`}
-                value={parada}
-                onChange={(e) => setParada(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddParada();
-                  }
-                }}
-                placeholder="Ex: SergipeTec"
-              />
-              <Button type="button" onClick={handleAddParada}>
-                <PlusCircleIcon className="w-4 h-4 mr-2" /> Adicionar
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {paradas.map((p, i) => (
-                <Badge key={i} variant="secondary">
-                  {p}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setParadas(paradas.filter((_, idx) => idx !== i))
-                    }
-                    className="ml-2"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          </div>
+                        <SelectContent>
+                          {municipios.map((m) => (
+                            <SelectItem key={m.id} value={String(m.id)}>
+                              {m.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-          <div className="space-y-2">
-            <Label>Passageiros</Label>
-            <div className="flex gap-2">
-              <Input
-                className={`bg-white ${
-                  errors.passageiro || errors.passageiros
-                    ? "ring-2 ring-red-500"
-                    : ""
-                }`}
-                value={passageiro}
-                onChange={(e) => setPassageiro(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddPassageiro();
-                  }
-                }}
-                placeholder="Ex: Alberto dos Santos Carvalho"
-              />
-              <Button type="button" onClick={handleAddPassageiro}>
-                <PlusCircleIcon className="w-4 h-4 mr-2" /> Adicionar
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {passageiros.map((p, i) => (
-                <Badge key={i} variant="secondary">
-                  {p}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPassageiros(passageiros.filter((_, idx) => idx !== i))
-                    }
-                    className="ml-2"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Data da saída</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      errors.dataSaida ? "ring-2 ring-red-500" : ""
-                    }`}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dataSaida ? (
-                      format(dataSaida, "PPP", { locale: ptBR })
-                    ) : (
-                      <span>Selecione uma data</span>
+                {/* PARADAS */}
+                <FormField
+                  control={form.control}
+                  name="paradas"
+                  render={({ field }) => (
+                    <TagInput
+                      label="Paradas"
+                      field={field}
+                      inputValue={paradaInput}
+                      setInputValue={(val) => {
+                        setParadaInput(val);
+                        if (val.trim()) setParadaError(false);
+                      }}
+                      pending={paradaPending}
+                      setPending={setParadaPending}
+                      placeholder="Ex: SergipeTec"
+                      hasError={paradaError}
+                      onAdd={() => {
+                        const success = addItem("paradas", paradaInput);
+                        if (success) {
+                          setParadaInput("");
+                          setParadaPending(false);
+                          form.clearErrors("paradas");
+                        }
+                      }}
+                    />
+                  )}
+                />
+
+                {/* PASSAGEIROS */}
+                <FormField
+                  control={form.control}
+                  name="passageiros"
+                  render={({ field }) => (
+                    <TagInput
+                      label="Passageiros"
+                      field={field}
+                      inputValue={passageiroInput}
+                      setInputValue={(val) => {
+                        setPassageiroInput(val);
+                        if (val.trim()) setPassageiroError(false);
+                      }}
+                      pending={passageiroPending}
+                      setPending={setPassageiroPending}
+                      placeholder="Ex: João da Silva"
+                      hasError={passageiroError}
+                      onAdd={() => {
+                        const success = addItem(
+                          "passageiros",
+                          passageiroInput,
+                          4
+                        );
+                        if (success) {
+                          setPassageiroInput("");
+                          setPassageiroPending(false);
+                          form.clearErrors("passageiros");
+                        }
+                      }}
+                    />
+                  )}
+                />
+
+                {/* DATAS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Saída */}
+                  <FormField
+                    control={form.control}
+                    name="dataSaida"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data da saída</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start"
+                              >
+                                {field.value
+                                  ? format(field.value, "PPP", { locale: ptBR })
+                                  : "Selecione uma data"}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+
+                          <PopoverContent align="start" className="p-0">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              locale={ptBR}
+                            />
+                          </PopoverContent>
+                        </Popover>
+
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={dataSaida}
-                    onSelect={setDataSaida}
-                    locale={ptBR}
                   />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label>Data de retorno</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      errors.dataRetorno ? "ring-2 ring-red-500" : ""
-                    }`}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dataRetorno ? (
-                      format(dataRetorno, "PPP", { locale: ptBR })
-                    ) : (
-                      <span>Selecione uma data</span>
+
+                  {/* Retorno */}
+                  <FormField
+                    control={form.control}
+                    name="dataRetorno"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data de retorno</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start"
+                              >
+                                {field.value
+                                  ? format(field.value, "PPP", { locale: ptBR })
+                                  : "Selecione uma data"}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+
+                          <PopoverContent align="start" className="p-0">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) => {
+                                const saida = form.getValues("dataSaida");
+                                return saida ? date < saida : false;
+                              }}
+                              locale={ptBR}
+                            />
+                          </PopoverContent>
+                        </Popover>
+
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={dataRetorno}
-                    onSelect={setDataRetorno}
-                    locale={ptBR}
-                    disabled={{ before: dataSaida || new Date() }}
                   />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
+                </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="saida">Horário de saída</Label>
-              <Input
-                className={`bg-white ${
-                  errors.horarioSaida ? "ring-2 ring-red-500" : ""
-                }`}
-                type="time"
-                id="saida"
-                value={horarioSaida}
-                onChange={(e) => {
-                  setHorarioSaida(e.target.value);
-                  setErrors((prev) => ({ ...prev, horarioSaida: false }));
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="retorno">Horário de retorno</Label>
-              <Input
-                className={`bg-white ${
-                  errors.horarioRetorno ? "ring-2 ring-red-500" : ""
-                }`}
-                type="time"
-                id="retorno"
-                value={horarioRetorno}
-                onChange={(e) => {
-                  setHorarioRetorno(e.target.value);
-                  setErrors((prev) => ({ ...prev, horarioRetorno: false }));
-                }}
-              />
-            </div>
-          </div>
+                {/* HORÁRIOS */}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="horarioSaida"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Horário de saída</FormLabel>
+                        <FormControl>
+                          <Input type="time" className="bg-white" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-          <div className="space-y-2">
-            <Label htmlFor="obs">Observação</Label>
-            <Textarea
-              className="bg-white"
-              id="obs"
-              placeholder="Detalhes da viagem, etc."
-              value={observacao}
-              onChange={(e) => setObservacao(e.target.value)}
-            />
-          </div>
+                  <FormField
+                    control={form.control}
+                    name="horarioRetorno"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Horário de retorno</FormLabel>
+                        <FormControl>
+                          <Input type="time" className="bg-white" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />{" "}
-                Enviando...
-              </>
-            ) : (
-              "Enviar solicitação"
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-    </form>
+                {/* OBSERVAÇÃO */}
+                <FormField
+                  control={form.control}
+                  name="observacao"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observação</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          className="bg-white"
+                          placeholder="Detalhes adicionais..."
+                          {...field}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* ENVIAR */}
+                <Button type="submit" disabled={loading} className="w-full">
+                  {loading ? (
+                    <>
+                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />{" "}
+                      Enviando...
+                    </>
+                  ) : (
+                    "Enviar solicitação"
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* RIGHT COLUMN */}
+      <div className="w-full lg:w-80 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangleIcon className="h-5 w-5" />
+              Avisos Importantes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <p>• Preencha todos os campos obrigatórios.</p>
+            <p>• A data de retorno deve ser posterior à data de saída.</p>
+            <p>• Máximo de 4 passageiros por veículo.</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-600">
+              <InfoIcon className="h-5 w-5" />
+              Guia Rápido
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Selecione o município de destino.</li>
+              <li>
+                Digite o nome de um destino no campo <strong>paradas</strong> e
+                clique em <strong>adicionar</strong>.
+              </li>
+              <li>
+                Digite o nome de um passageiro no campo
+                <strong> passageiros</strong> e clique em
+                <strong> adicionar</strong>.
+              </li>
+              <li>Defina datas e horários.</li>
+              <li>Clique em "Enviar solicitação".</li>
+            </ol>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

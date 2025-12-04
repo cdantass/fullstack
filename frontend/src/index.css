@@ -194,7 +194,7 @@
   }
 }
 
-/* Make the browser's date/time icon white in dark mode */
+/* Conserta o problema do ícone de data/hora em dark mode */
 .dark input[type="time"]::-webkit-calendar-picker-indicator,
 .dark input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);

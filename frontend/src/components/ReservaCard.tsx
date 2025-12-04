@@ -9,14 +9,27 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { type Reserva } from "@/pages/context/ReservaContext";
+import { type Reserva } from "@/context/reserva-context-hook";
 import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 interface ReservaCardProps {
   reserva: Reserva;
   veiculoMap: Record<number, string>;
   motoristaMap: Record<number, string>;
+  onCancel?: (id: number) => void;
 }
 
 const getStatusBadgeClasses = (status: Reserva["status"]) => {
@@ -36,12 +49,13 @@ export function ReservaCard({
   reserva,
   veiculoMap,
   motoristaMap,
+  onCancel,
 }: ReservaCardProps) {
   const veiculoNome = reserva.veiculo
-    ? veiculoMap[reserva.veiculo as any] || reserva.veiculo
+    ? veiculoMap[parseInt(reserva.veiculo, 10)] || reserva.veiculo
     : "-";
   const motoristaNome = reserva.motorista
-    ? motoristaMap[reserva.motorista as any] || reserva.motorista
+    ? motoristaMap[parseInt(reserva.motorista, 10)] || reserva.motorista
     : "-";
 
   return (
@@ -109,6 +123,8 @@ export function ReservaCard({
                 <span className="font-medium">
                   {reserva.status === "Aprovado"
                     ? "Aprovado por:"
+                    : reserva.status === "Cancelado"
+                    ? "Cancelado por:"
                     : "Negado por:"}
                 </span>
               </div>
@@ -131,6 +147,37 @@ export function ReservaCard({
             {reserva.status}
           </Badge>
         </div>
+
+        {(reserva.status === "Pendente" || reserva.status === "Aprovado") &&
+          onCancel && (
+            <div className="md:col-span-2 flex justify-end mt-4 border-t pt-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    Cancelar Reserva
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancelar Reserva</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja cancelar esta reserva? Esta ação
+                      não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Voltar</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => onCancel(reserva.id)}
+                    >
+                      Confirmar Cancelamento
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
       </CardContent>
     </Card>
   );

@@ -11,13 +11,11 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "./ModeToggle";
-import LogoutButton from "./logout";
-import { useAuth } from "../pages/context/AdminContext";
+import LogoutButton from "./Logout";
+import { useAuth } from "@/context/auth-context";
 
-export function AppSidebar({}: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { user, loading } = useAuth();
-
-  const isAdmin = user?.is_superuser || user?.is_gestor;
 
   const data = React.useMemo(() => {
     return {
@@ -32,8 +30,7 @@ export function AppSidebar({}: React.ComponentProps<typeof Sidebar>) {
               title: "Reservar Veículo",
               url: "./reservar-veiculo",
             },
-
-            ...(isAdmin
+            ...(user?.usertype === "gestor"
               ? [
                   {
                     title: "Autorizar Reserva",
@@ -41,7 +38,6 @@ export function AppSidebar({}: React.ComponentProps<typeof Sidebar>) {
                   },
                 ]
               : []),
-
             {
               title: "Consultar Reserva",
               url: "./consultar-reserva",
@@ -50,10 +46,10 @@ export function AppSidebar({}: React.ComponentProps<typeof Sidebar>) {
         },
       ],
     };
-  }, [isAdmin]);
+  }, [user]);
 
   return (
-    <Sidebar collapsible="none">
+    <Sidebar collapsible="none" {...props}>
       <SidebarHeader className="bg-topbar-background dark:bg-gray-900 h-[80px]">
         <img src="/images/logo_prevencao_corrupcao.png" alt="Logo da Sefaz" />
       </SidebarHeader>

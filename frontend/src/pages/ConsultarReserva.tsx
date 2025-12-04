@@ -11,7 +11,7 @@ import { ArrowUpDown } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
 
-import { mockMotoristas, mockVeiculos } from "@/mocks/data";
+import api from "@/api";
 import {
   Select,
   SelectContent,
@@ -48,6 +48,10 @@ const getStatusBadgeClasses = (status: Reserva["status"]) => {
       return "bg-red-100 text-red-800 hover:bg-red-200";
     case "Pendente":
       return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
+    case "Concluido":
+      return "bg-blue-100 text-blue-800 hover:bg-blue-200";
+    case "Viagem compartilhada":
+      return "bg-purple-100 text-purple-800 hover:bg-purple-200";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -77,8 +81,12 @@ export default function ConsultarReservaPage() {
     fetchReservas();
     const fetchOptions = async () => {
       try {
-        setMotoristas(mockMotoristas);
-        setVeiculos(mockVeiculos);
+        const [mRes, vRes] = await Promise.all([
+          api.get("/api/motoristas/"),
+          api.get("/api/veiculos/"),
+        ]);
+        setMotoristas(mRes.data);
+        setVeiculos(vRes.data);
       } catch {
         toast.error("Não foi possível carregar motoristas ou veículos.");
       }
@@ -300,6 +308,7 @@ export default function ConsultarReservaPage() {
     "Negado",
     "Cancelado",
     "Concluido",
+    "Viagem compartilhada",
   ];
 
   return (

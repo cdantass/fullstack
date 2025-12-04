@@ -16,7 +16,13 @@ export type Reserva = {
   motorista?: string;
   veiculo?: string;
   obsAdmin?: string;
-  status: "Pendente" | "Aprovado" | "Negado" | "Cancelado" | "Concluido";
+  status:
+    | "Pendente"
+    | "Aprovado"
+    | "Negado"
+    | "Cancelado"
+    | "Concluido"
+    | "Viagem compartilhada";
   data_solicitacao: string;
   horario_solicitacao: string;
   autorizador?: string;

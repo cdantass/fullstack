@@ -43,7 +43,7 @@ import { toast } from "sonner";
 import api from "@/api";
 import { formatDateTime } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
-import { mockMotoristas, mockVeiculos } from "@/mocks/data";
+
 import { CheckCircle, Link, PlusCircleIcon, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -71,6 +71,8 @@ const getStatusBadgeClasses = (status: Reserva["status"]) => {
       return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
     case "Concluido":
       return "bg-blue-100 text-blue-800 hover:bg-blue-200";
+    case "Viagem compartilhada":
+      return "bg-purple-100 text-purple-800 hover:bg-purple-200";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -115,14 +117,12 @@ export default function AutorizarPage() {
     fetchReservas();
     const fetchOptions = async () => {
       try {
-        // const [mRes, vRes] = await Promise.all([
-        //   api.get("/api/motoristas/"),
-        //   api.get("/api/veiculos/"),
-        // ]);
-        // setMotoristas(mRes.data);
-        // setVeiculos(vRes.data);
-        setMotoristas(mockMotoristas);
-        setVeiculos(mockVeiculos);
+        const [mRes, vRes] = await Promise.all([
+          api.get("/api/motoristas/"),
+          api.get("/api/veiculos/"),
+        ]);
+        setMotoristas(mRes.data);
+        setVeiculos(vRes.data);
       } catch {
         toast.error("Não foi possível carregar motoristas ou veículos.");
       }
@@ -210,7 +210,7 @@ export default function AutorizarPage() {
     const sharedId = String(maxId + 1);
 
     const now = new Date();
-    const status = "Aprovado";
+    const status = "Viagem compartilhada";
 
     try {
       await Promise.all(
@@ -218,7 +218,7 @@ export default function AutorizarPage() {
           const reserva = reservas.find((r) => r.id === id);
           if (!reserva) return;
 
-          /* const apiPayload = {
+          const apiPayload = {
             ...reserva,
             viagemCompartilhadaId: sharedId,
             data_saida: combineFormData.data_saida,
@@ -229,20 +229,19 @@ export default function AutorizarPage() {
             passageiros: combineFormData.passageiros,
             status: status,
             motorista_id:
-              status === "Aprovado"
+              status === "Viagem compartilhada"
                 ? parseInt(combineFormData.motorista_id, 10)
                 : null,
             veiculo_id:
-              status === "Aprovado"
+              status === "Viagem compartilhada"
                 ? parseInt(combineFormData.veiculo_id, 10)
                 : null,
             observacao_autorizador: combineFormData.observacao,
-            autorizador: status === "Aprovado" ? authUser?.name : undefined,
-          }; */
+            autorizador:
+              status === "Viagem compartilhada" ? authUser?.name : undefined,
+          };
 
-          // Mocking API call
-          // await api.put(`/api/chamados/${id}/`, apiPayload);
-          await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate delay
+          await api.put(`/api/chamados/${id}/`, apiPayload);
 
           updateReserva(id, {
             viagemCompartilhadaId: sharedId,
@@ -254,21 +253,22 @@ export default function AutorizarPage() {
             passageiros: combineFormData.passageiros,
             status: status as Reserva["status"],
             motorista:
-              status === "Aprovado"
+              status === "Viagem compartilhada"
                 ? motoristaMap[parseInt(combineFormData.motorista_id, 10)]
                 : undefined,
             veiculo:
-              status === "Aprovado"
+              status === "Viagem compartilhada"
                 ? veiculoMap[parseInt(combineFormData.veiculo_id, 10)]
                 : undefined,
             obsAdmin: combineFormData.observacao,
-            autorizador: status === "Aprovado" ? authUser?.name : undefined,
+            autorizador:
+              status === "Viagem compartilhada" ? authUser?.name : undefined,
             data_autorizacao:
-              status === "Aprovado"
+              status === "Viagem compartilhada"
                 ? now.toISOString().split("T")[0]
                 : undefined,
             horario_autorizacao:
-              status === "Aprovado"
+              status === "Viagem compartilhada"
                 ? `${String(now.getHours()).padStart(2, "0")}:${String(
                     now.getMinutes()
                   ).padStart(2, "0")}`
@@ -329,7 +329,7 @@ export default function AutorizarPage() {
           const targetReserva = reservas.find((r) => r.id === targetId);
           if (!targetReserva) return;
 
-          /* const apiPayload = {
+          const apiPayload = {
             ...targetReserva,
             status: status,
             observacao_autorizador: obs[id] ?? "",
@@ -337,11 +337,9 @@ export default function AutorizarPage() {
               status === "aprovado" ? parseInt(motoristaId, 10) : null,
             veiculo_id: status === "aprovado" ? parseInt(veiculoId, 10) : null,
             autorizador: authUser?.name,
-          }; */
+          };
 
-          // Mocking API call
-          // await api.put(`/api/chamados/${targetId}/`, apiPayload);
-          await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate delay
+          await api.put(`/api/chamados/${targetId}/`, apiPayload);
           updateReserva(targetId, {
             status: status === "aprovado" ? "Aprovado" : "Negado",
             obsAdmin: obs[id] ?? "",
@@ -486,7 +484,9 @@ export default function AutorizarPage() {
     "Pendente",
     "Aprovado",
     "Negado",
+    "Negado",
     "Concluido",
+    "Viagem compartilhada",
   ];
 
   return (

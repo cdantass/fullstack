@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
 import AutorizarPage from "./pages/AutorizarReserva";
 import ConsultarReservaPage from "./pages/ConsultarReserva";
 import ReservaPage from "./pages/ReservarVeiculo";
@@ -21,6 +22,9 @@ function App() {
         <ReservaProvider>
           <BrowserRouter>
             <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+
               {/* Protected Routes */}
               <Route element={<ProtectedRoute />}>
                 <Route element={<MainLayout />}>

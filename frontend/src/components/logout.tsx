@@ -14,5 +14,4 @@ const LogoutButton = () => {
   );
 };
 
-// Irrelevante sem keycloak
 export default LogoutButton;

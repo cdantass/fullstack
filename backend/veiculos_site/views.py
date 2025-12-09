@@ -20,7 +20,7 @@ User = get_user_model()
 
 class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserProfileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_object(self):
         return self.request.user
@@ -35,22 +35,22 @@ class CreateUserView(generics.CreateAPIView):
 class VeiculoViewSet(viewsets.ModelViewSet):
     queryset = Veiculo.objects.all()
     serializer_class = VeiculoSerializer
-    permission_classes = [IsAuthenticated, IsGestor]
+    permission_classes  = [AllowAny]
 
 
 class MotoristaViewSet(viewsets.ModelViewSet):
     queryset = Motorista.objects.all()
     serializer_class = MotoristaSerializer
-    permission_classes = [IsAuthenticated, IsGestor]
+    permission_classes  = [AllowAny]
 
 
 class ChamadoViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['update', 'partial_update', 'destroy']:
-            self.permission_classes = [IsAuthenticated, IsGestor]
+            self.permission_classes = [AllowAny]
         else:
-            self.permission_classes = [IsAuthenticated]
+            self.permission_classes = [AllowAny]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -93,24 +93,24 @@ class ChamadoViewSet(viewsets.ModelViewSet):
 class MunicipioListView(generics.ListAPIView):
     queryset = Municipio.objects.all().order_by('nome')
     serializer_class = MunicipioSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
 
 class MotoristaDisponivelListView(generics.ListAPIView):
     queryset = Motorista.objects.filter(status='disponivel').order_by('nome_motorista')
     serializer_class = MotoristaSerializer
-    permission_classes = [IsAuthenticated, IsGestor]
+    permission_classes = [AllowAny]
 
 
 class VeiculoDisponivelListView(generics.ListAPIView):
     queryset = Veiculo.objects.filter(status='disponivel').order_by('placa')
     serializer_class = VeiculoSerializer
-    permission_classes = [IsAuthenticated, IsGestor]
+    permission_classes = [AllowAny]
 
 
 class MeusChamadosListView(generics.ListAPIView):
     serializer_class = ChamadoSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         return Chamado.objects.filter(

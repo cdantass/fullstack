@@ -4,6 +4,9 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
+# --------------------- USER ---------------------
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -24,13 +27,14 @@ class CreateUserSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        user = User.objects.create_user(
+        return User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password']
         )
-        return user
 
+
+# --------------------- VEICULO / MOTORISTA / MUNICÍPIO ---------------------
 
 class VeiculoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -50,30 +54,27 @@ class MunicipioSerializer(serializers.ModelSerializer):
         fields = ['id', 'nome']
 
 
+# --------------------- PARADA ---------------------
+
 class ParadaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Parada
         fields = ['local']
 
 
-# --------------------- CHAMADO (CONSULTA/DETALHES) ---------------------
+# --------------------- CHAMADO (RETORNO / LISTA / DETALHES) ---------------------
 
 class ChamadoSerializer(serializers.ModelSerializer):
     solicitante_id = serializers.IntegerField(read_only=True)
     autorizador_id = serializers.IntegerField(read_only=True)
 
-    municipio = serializers.SlugRelatedField(
-        queryset=Municipio.objects.all(),
-        slug_field='nome',
-        required=False,
-        allow_null=True
-    )
+    municipio = serializers.CharField(source='municipio.nome', read_only=True)
 
     motorista_designado = serializers.StringRelatedField(read_only=True)
     veiculo_designado = serializers.StringRelatedField(read_only=True)
-    paradas = ParadaSerializer(many=True, required=False)
 
-    # 🔥 CORREÇÃO IMPORTANTE — PASSAGEIROS AGORA SÃO OPCIONAIS
+    paradas = ParadaSerializer(many=True, read_only=True)
+
     passageiro1 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     passageiro2 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     passageiro3 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -83,19 +84,12 @@ class ChamadoSerializer(serializers.ModelSerializer):
         model = Chamado
         fields = [
             'id', 'veiculo_designado', 'solicitante_id', 'motorista_designado',
-            'veiculo_designado', 'data_saida', 'horario_saida', 'data_retorno',
+            'data_saida', 'horario_saida', 'data_retorno',
             'horario_retorno', 'passageiro1', 'passageiro2', 'passageiro3',
             'passageiro4', 'municipio', 'observacao', 'status', 'data_criacao',
             'autorizador_id', 'observacao_autorizador', 'data_autorizacao',
             'paradas'
         ]
-
-    def create(self, validated_data):
-        paradas_data = validated_data.pop('paradas', [])
-        chamado = Chamado.objects.create(**validated_data)
-        for parada_data in paradas_data:
-            Parada.objects.create(chamado=chamado, **parada_data)
-        return chamado
 
 
 # --------------------- CRIAR CHAMADO ---------------------
@@ -105,21 +99,20 @@ class ChamadoCreateSerializer(serializers.ModelSerializer):
 
     veiculo_designado = serializers.PrimaryKeyRelatedField(
         queryset=Veiculo.objects.all(),
-        allow_null=True,
-        required=False
+        required=False,
+        allow_null=True
     )
     motorista_designado = serializers.PrimaryKeyRelatedField(
         queryset=Motorista.objects.all(),
-        allow_null=True,
-        required=False
+        required=False,
+        allow_null=True
     )
     municipio = serializers.PrimaryKeyRelatedField(
         queryset=Municipio.objects.all(),
-        allow_null=True,
-        required=False
+        required=False,
+        allow_null=True
     )
 
-    # 🔥 CORREÇÃO — passageiros opcionais aqui também
     passageiro1 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     passageiro2 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     passageiro3 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -145,13 +138,16 @@ class ChamadoCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         paradas_data = validated_data.pop('paradas', [])
+
         chamado = Chamado.objects.create(**validated_data)
-        for parada_data in paradas_data:
-            Parada.objects.create(chamado=chamado, **parada_data)
+
+        for parada in paradas_data:
+            Parada.objects.create(chamado=chamado, **parada)
+
         return chamado
 
 
-# --------------------- CHAMADO GESTOR (APROVAR/RECUSAR) ---------------------
+# --------------------- CHAMADO GESTOR (APROVAR / RECUSAR) ---------------------
 
 class ChamadoGestorSerializer(serializers.ModelSerializer):
     solicitante_id = serializers.StringRelatedField(read_only=True)
@@ -163,17 +159,16 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
     paradas = ParadaSerializer(many=True, read_only=True)
 
     motorista_id = serializers.PrimaryKeyRelatedField(
-        queryset=Motorista.objects.all(), 
+        queryset=Motorista.objects.all(),
         source='motorista_designado',
-        write_only=True, required=False, allow_null=True,
+        write_only=True, allow_null=True, required=False
     )
     veiculo_id = serializers.PrimaryKeyRelatedField(
         queryset=Veiculo.objects.all(),
         source='veiculo_designado',
-        write_only=True, required=False, allow_null=True,
+        write_only=True, allow_null=True, required=False
     )
 
-    # 🔥 ESSENCIAL — SEM ISSO NÃO APROVA NUNCA
     passageiro1 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     passageiro2 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     passageiro3 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -191,6 +186,8 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['data_criacao', 'data_autorizacao']
 
+
+# --------------------- PERFIL DO USUÁRIO ---------------------
 
 class UserProfileSerializer(serializers.ModelSerializer):
     is_gestor = serializers.SerializerMethodField()

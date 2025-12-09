@@ -1,19 +1,16 @@
-import { useKeycloak } from "@react-keycloak/web";
 import { Outlet } from "react-router-dom";
 import { LoadingScreen } from "./LoadingScreen";
+import { useAuth } from "../context/auth-context";
 
 function ProtectedRoute() {
-  const { keycloak, initialized } = useKeycloak();
+  const { loading } = useAuth();
 
-  if (!initialized) {
+  if (loading) {
     return <LoadingScreen />;
   }
 
-  if (!keycloak.authenticated) {
-    keycloak.login({ redirectUri: window.location.origin });
-    return <LoadingScreen />;
-  }
-
+  // For now, allow all access without authentication
+  // Replace this with your own auth check if needed
   return <Outlet />;
 }
 

@@ -41,13 +41,9 @@ import {
   AlertTriangleIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-// import api from "@/api";
+import api from "@/api";
 import { cn } from "@/lib/utils";
 import { useReservas } from "@/context/reserva-context-hook";
-
-/* -------------------------------------------------------------------------- */
-/*                                   SCHEMA                                   */
-/* -------------------------------------------------------------------------- */
 
 const formSchema = z
   .object({
@@ -67,10 +63,6 @@ const formSchema = z
     message: "A data de retorno não pode ser anterior à data de saída.",
     path: ["dataRetorno"],
   });
-
-/* -------------------------------------------------------------------------- */
-/*                                SUBCOMPONENTS                               */
-/* -------------------------------------------------------------------------- */
 
 function TagInput({
   label,
@@ -160,15 +152,12 @@ function TagInput({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                   PAGE                                     */
-/* -------------------------------------------------------------------------- */
-
 export default function ReservaPage() {
-  const [municipios, setMunicipios] = useState<{ id: number; nome: string }[]>(
-    []
-  );
+  const [municipios, setMunicipios] = useState<
+    { id: number | string; nome: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(true);
 
   const [paradaInput, setParadaInput] = useState("");
   const [passageiroInput, setPassageiroInput] = useState("");
@@ -193,26 +182,21 @@ export default function ReservaPage() {
 
   const { addReserva } = useReservas();
 
-  /* ------------------------------- LOAD DATA -------------------------------- */
-
   useEffect(() => {
-    // Mocking API call
-    // api
-    //   .get("/api/municipios/")
-    //   .then((res) => setMunicipios(res.data))
-    //   .catch(() => toast.error("Erro ao carregar municípios."));
+    const fetchMunicipios = async () => {
+      try {
+        const res = await api.get("/api/municipios/");
+        setMunicipios(res.data);
+      } catch (error) {
+        console.error("Erro ao carregar municípios:", error);
+        toast.error("Erro ao carregar lista de municípios.");
+      } finally {
+        setLoadingMunicipios(false);
+      }
+    };
 
-    setMunicipios([
-      { id: 1, nome: "Aracaju" },
-      { id: 2, nome: "Nossa Senhora do Socorro" },
-      { id: 3, nome: "Lagarto" },
-      { id: 4, nome: "Itabaiana" },
-      { id: 5, nome: "São Cristóvão" },
-      { id: 6, nome: "Estância" },
-    ]);
+    fetchMunicipios();
   }, []);
-
-  /* ------------------------------ HANDLERS ---------------------------------- */
 
   const addItem = (
     fieldName: "paradas" | "passageiros",
@@ -244,40 +228,26 @@ export default function ReservaPage() {
 
     const formatDate = (date: Date) => date.toISOString().split("T")[0];
 
-    // Mock payload for Context
-    const payload: any = {
-      id: Date.now(),
-      status: "Pendente",
-      data_solicitacao: new Date().toISOString().split("T")[0],
-      horario_solicitacao: new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+    const payload = {
       data_saida: formatDate(values.dataSaida),
       horario_saida: values.horarioSaida,
       data_retorno: formatDate(values.dataRetorno),
       horario_retorno: values.horarioRetorno,
-      municipio:
-        municipios.find((m) => String(m.id) === values.municipio)?.nome ||
-        "Destino",
+      municipio_id: values.municipio,
+      municipio_nome: municipios.find((m) => String(m.id) === values.municipio)
+        ?.nome,
       observacao: values.observacao || "",
       passageiros: values.passageiros,
       paradas: values.paradas,
-      solicitante: "Usuário Teste", // Mock user
-      unidade: "Unidade Teste", // Mock unit
     };
 
     try {
-      // Mocking API call
-      // await api.post("/api/chamados/", payload);
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate delay
-
-      addReserva(payload);
-
-      toast.success("Solicitação enviada!");
+      const response = await api.post("/api/chamados/", payload);
+      addReserva(response.data);
+      toast.success("Solicitação enviada com sucesso!");
 
       form.reset({
-        municipio: values.municipio,
+        municipio: "",
         paradas: [],
         passageiros: [],
         horarioSaida: "",
@@ -290,6 +260,7 @@ export default function ReservaPage() {
       setParadaInput("");
       setPassageiroInput("");
     } catch (error: any) {
+      console.error(error);
       toast.error(
         error?.response?.data?.message || "Erro ao enviar solicitação."
       );
@@ -297,10 +268,6 @@ export default function ReservaPage() {
       setLoading(false);
     }
   };
-
-  /* -------------------------------------------------------------------------- */
-  /*                                  RENDER                                    */
-  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 justify-center p-6 max-w-7xl mx-auto">
@@ -327,10 +294,17 @@ export default function ReservaPage() {
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
+                        disabled={loadingMunicipios}
                       >
                         <FormControl>
                           <SelectTrigger className="bg-white">
-                            <SelectValue placeholder="Selecione o município" />
+                            <SelectValue
+                              placeholder={
+                                loadingMunicipios
+                                  ? "Carregando..."
+                                  : "Selecione o município"
+                              }
+                            />
                           </SelectTrigger>
                         </FormControl>
 

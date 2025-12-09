@@ -1,12 +1,10 @@
 import { LogOut } from "lucide-react";
 import { Button } from "./ui/button";
-import { useKeycloak } from "@react-keycloak/web";
 
 const LogoutButton = () => {
-  const { keycloak } = useKeycloak();
-
   const handleLogout = () => {
-    keycloak.logout({ redirectUri: window.location.origin });
+    console.log("Logout clicked");
+    window.location.href = "/";
   };
 
   return (
@@ -16,4 +14,5 @@ const LogoutButton = () => {
   );
 };
 
+// Irrelevante sem keycloak
 export default LogoutButton;

@@ -1,50 +1,33 @@
 "use client";
 
-import {
-  useState,
-  useEffect,
-  type ReactNode,
-  useCallback,
-  useMemo,
-} from "react";
-import { useKeycloak } from "@react-keycloak/web";
+import { useState, useEffect, type ReactNode, useMemo } from "react";
 
 import { AuthContext, type User } from "./auth-context";
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const { keycloak, initialized } = useKeycloak();
-  const [user, setUser] = useState<User | null>(null);
+// Mock user for development - no lugar do keycloak
+const mockUser: User = {
+  id: "1",
+  name: "Usuário Teste",
+  email: "usuario@example.com",
+  usertype: "gestor", // mudar para "user" ou "gestor" para testar roles
+};
 
-  const fetchUserData = useCallback(async () => {
-    if (keycloak && keycloak.authenticated) {
-      const profile = await keycloak.loadUserProfile();
-      const mappedUser: User = {
-        id: profile.id ?? "",
-        name: `${profile.firstName} ${profile.lastName}`.trim(),
-        email: profile.email ?? "",
-        usertype: keycloak.hasRealmRole("gestor") ? "gestor" : "user", //mudar role
-      };
-      setUser(mappedUser);
-    } else {
-      setUser(null);
-    }
-  }, [keycloak]);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (initialized) {
-      fetchUserData();
-    }
-  }, [initialized, fetchUserData]);
+    setUser(mockUser);
+    setLoading(false);
+  }, []);
 
   const value = useMemo(
     () => ({
       user,
-      loading: !initialized,
+      loading,
     }),
-    [user, initialized]
+    [user, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-

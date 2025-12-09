@@ -12,31 +12,6 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  /*
-  interface ApiReservaItem {
-    id: number;
-    solicitante: string;
-    municipio: string;
-    data_saida: string;
-    horario_saida: string;
-    data_retorno: string;
-    horario_retorno: string;
-    passageiro1?: string;
-    passageiro2?: string;
-    passageiro3?: string;
-    passageiro4?: string;
-    paradas: { local: string }[];
-    observacao?: string;
-    observacao_autorizador?: string;
-    status?: string;
-    motorista_designado?: { id: number } | number | null;
-    veiculo_designado?: { id: number } | number | null;
-    data_criacao?: string;
-    autorizador?: string;
-    data_autorizacao?: string;
-  }
-  */
-
   const fetchReservas = useCallback(async () => {
     setLoading(true);
     try {

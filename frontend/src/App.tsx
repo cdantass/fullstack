@@ -1,7 +1,4 @@
-
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ReactKeycloakProvider, useKeycloak } from "@react-keycloak/web";
-import keycloak from "./keycloak";
 
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
@@ -12,19 +9,12 @@ import ReservaPage from "./pages/ReservarVeiculo";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { MainLayout } from "./components/MainLayout";
-import { LoadingScreen } from "./components/LoadingScreen";
 
 import { ThemeProvider } from "./components/ThemeProvider";
 import { ReservaProvider } from "./context/ReservaContext";
 import { AuthProvider } from "./context/AdminContext";
 
-function AppContent() {
-  const { initialized } = useKeycloak();
-
-  if (!initialized) {
-    return <LoadingScreen />;
-  }
-
+function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <AuthProvider>
@@ -61,14 +51,6 @@ function AppContent() {
         </ReservaProvider>
       </AuthProvider>
     </ThemeProvider>
-  );
-}
-
-function App() {
-  return (
-    <ReactKeycloakProvider authClient={keycloak}>
-      <AppContent />
-    </ReactKeycloakProvider>
   );
 }
 

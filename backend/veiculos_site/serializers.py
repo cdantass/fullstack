@@ -1,11 +1,9 @@
 from rest_framework import serializers
-from .models import Veiculo, Motorista, Chamado, Municipio, Parada
 from django.contrib.auth import get_user_model
 
+from .models import Veiculo, Motorista, Chamado, Municipio, Parada
+
 User = get_user_model()
-
-
-# --------------------- USER ---------------------
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,9 +31,6 @@ class CreateUserSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
 
-
-# --------------------- VEICULO / MOTORISTA / MUNICÍPIO ---------------------
-
 class VeiculoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Veiculo
@@ -54,15 +49,10 @@ class MunicipioSerializer(serializers.ModelSerializer):
         fields = ['id', 'nome']
 
 
-# --------------------- PARADA ---------------------
-
 class ParadaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Parada
         fields = ['local']
-
-
-# --------------------- CHAMADO (RETORNO / LISTA / DETALHES) ---------------------
 
 class ChamadoSerializer(serializers.ModelSerializer):
     solicitante_id = serializers.IntegerField(read_only=True)
@@ -91,8 +81,6 @@ class ChamadoSerializer(serializers.ModelSerializer):
             'paradas'
         ]
 
-
-# --------------------- CRIAR CHAMADO ---------------------
 
 class ChamadoCreateSerializer(serializers.ModelSerializer):
     paradas = ParadaSerializer(many=True, required=False)
@@ -138,16 +126,12 @@ class ChamadoCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         paradas_data = validated_data.pop('paradas', [])
-
         chamado = Chamado.objects.create(**validated_data)
 
         for parada in paradas_data:
             Parada.objects.create(chamado=chamado, **parada)
 
         return chamado
-
-
-# --------------------- CHAMADO GESTOR (APROVAR / RECUSAR) ---------------------
 
 class ChamadoGestorSerializer(serializers.ModelSerializer):
     solicitante_id = serializers.StringRelatedField(read_only=True)
@@ -161,12 +145,16 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
     motorista_id = serializers.PrimaryKeyRelatedField(
         queryset=Motorista.objects.all(),
         source='motorista_designado',
-        write_only=True, allow_null=True, required=False
+        write_only=True,
+        allow_null=True,
+        required=False
     )
     veiculo_id = serializers.PrimaryKeyRelatedField(
         queryset=Veiculo.objects.all(),
         source='veiculo_designado',
-        write_only=True, allow_null=True, required=False
+        write_only=True,
+        allow_null=True,
+        required=False
     )
 
     passageiro1 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -186,8 +174,36 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['data_criacao', 'data_autorizacao']
 
+class MergeChamadoSerializer(serializers.Serializer):
+    chamados = serializers.ListField(
+        child=serializers.IntegerField(),
+        allow_empty=False
+    )
 
-# --------------------- PERFIL DO USUÁRIO ---------------------
+    motorista_id = serializers.PrimaryKeyRelatedField(
+        queryset=Motorista.objects.all(),
+        required=True
+    )
+
+    veiculo_id = serializers.PrimaryKeyRelatedField(
+        queryset=Veiculo.objects.all(),
+        required=True
+    )
+
+    observacao = serializers.CharField(
+        required=False,
+        allow_blank=True
+    )
+
+    def validate_chamados(self, ids):
+        if len(ids) < 2:
+            raise serializers.ValidationError("Selecione pelo menos duas viagens para mesclar.")
+        if Chamado.objects.filter(id__in=ids).count() != len(ids):
+            raise serializers.ValidationError("Um ou mais IDs não existem.")
+        return ids
+
+    class Meta:
+        fields = ['chamados', 'motorista_id', 'veiculo_id', 'observacao']
 
 class UserProfileSerializer(serializers.ModelSerializer):
     is_gestor = serializers.SerializerMethodField()

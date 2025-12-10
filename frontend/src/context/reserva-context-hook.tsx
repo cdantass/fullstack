@@ -48,7 +48,7 @@ export type ReservaContextType = {
   reservas: Reserva[];
   loading: boolean;
   fetchReservas: () => Promise<void>;
-  addReserva: (r: AddReservaPayload) => void;
+  addReserva: (r: AddReservaPayload) => Promise<void>;
   updateReserva: (id: number, updates: Partial<Reserva>) => void;
   cancelReserva: (id: number, autorizador?: string) => Promise<void>;
 };

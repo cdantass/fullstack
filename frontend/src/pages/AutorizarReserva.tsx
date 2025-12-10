@@ -61,8 +61,8 @@ interface Veiculo {
   status: string;
 }
 
-const getStatusBadgeClasses = (status: Reserva["status"]) => {
-  switch (status.toLowerCase()) {
+const getStatusBadgeClasses = (status: string) => {
+  switch ((status || "").toLowerCase()) {
     case "aprovado":
       return "bg-green-100 text-green-800 hover:bg-green-200";
     case "recusado":
@@ -397,7 +397,7 @@ export default function AutorizarPage() {
 
     if (filter) {
       data = data.filter(
-        (r) => r.status.toLowerCase() === filter.toLowerCase()
+        (r) => (r.status || "").toLowerCase() === filter.toLowerCase()
       );
     }
 
@@ -544,10 +544,12 @@ export default function AutorizarPage() {
                   <Checkbox
                     checked={
                       filteredReservas.some(
-                        (r) => r.status.toLowerCase() === "pendente"
+                        (r) => (r.status || "").toLowerCase() === "pendente"
                       ) &&
                       filteredReservas
-                        .filter((r) => r.status.toLowerCase() === "pendente")
+                        .filter(
+                          (r) => (r.status || "").toLowerCase() === "pendente"
+                        )
                         .every((r) => selectedReservas.includes(r.id))
                     }
                     onCheckedChange={handleSelectAll}
@@ -582,7 +584,7 @@ export default function AutorizarPage() {
                         className="p-3 whitespace-nowrap"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {row.status.toLowerCase() === "pendente" && (
+                        {(row.status || "").toLowerCase() === "pendente" && (
                           <Checkbox
                             checked={selectedReservas.includes(row.id)}
                             onCheckedChange={() => handleSelectReserva(row.id)}

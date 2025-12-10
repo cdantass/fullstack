@@ -77,6 +77,7 @@ class Chamado(models.Model):
         ('pendente', 'Pendente'),
         ('aprovado', 'Aprovado'),
         ('em_andamento', 'Em Andamento'),
+        ('viagem_compartilhada', "Viagem Compartilhada"),
         ('concluido', 'Concluído'),
         ('recusado', 'Recusado'),
     ]

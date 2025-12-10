@@ -281,13 +281,10 @@ export default function ReservaPage() {
         municipio: municipioNumeric,
         observacao: values.observacao || "",
         paradas: paradasTransformed,
-      } as const;
+      };
 
-      const response = await api.post("/api/chamados/", payload);
-
-      // update local context and notify
-      addReserva(response.data);
-      toast.success("Solicitação enviada com sucesso!");
+      // @ts-ignore - Payload matches backend creation schema but differs from strict frontend Reserva type (e.g. empty strings vs objects)
+      await addReserva(payload);
 
       // reset form and local inputs
       form.reset({

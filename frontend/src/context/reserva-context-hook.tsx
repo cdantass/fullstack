@@ -2,32 +2,41 @@ import { createContext, useContext } from "react";
 
 export type Reserva = {
   id: number;
-  unidade: string;
-  solicitante: string;
-  municipio: string;
-  localidade?: string;
-  paradas: string[];
-  passageiros: string[];
+  solicitante_id: string; // was solicitante
   data_saida: string;
-  data_retorno: string;
   horario_saida: string;
+  data_retorno: string;
   horario_retorno: string;
-  obsSolicitante?: string;
-  motorista?: string;
-  veiculo?: string;
-  obsAdmin?: string;
-  status:
-    | "Pendente"
-    | "Aprovado"
-    | "Negado"
-    | "Cancelado"
-    | "Concluido"
-    | "Viagem compartilhada";
-  data_solicitacao: string;
-  horario_solicitacao: string;
-  autorizador?: string;
+  passageiro1?: string;
+  passageiro2?: string;
+  passageiro3?: string;
+  passageiro4?: string;
+  municipio: string;
+  observacao?: string; // was obsSolicitante
+  status: string; // was union type, now string (e.g. "pendente")
+  data_criacao: string; // was data_solicitacao
+  autorizador_id?: string; // was autorizador
+  observacao_autorizador?: string; // was obsAdmin
   data_autorizacao?: string;
-  horario_autorizacao?: string;
+  motorista_designado?: {
+    id: number;
+    nome_motorista: string;
+    status: string;
+  };
+  veiculo_designado?: {
+    id: number;
+    placa: string;
+    modelo: string;
+    ano: number;
+    status: string;
+  };
+  paradas: { local: string }[];
+
+  // Legacy fields or derived fields might need handling if components rely on them.
+  // For now I will strictly match the schema.
+  // Note: Unidade is missing in new schema. I will remove it or make it optional if not present.
+  unidade?: string;
+  localidade?: string;
   viagemCompartilhadaId?: string;
 };
 

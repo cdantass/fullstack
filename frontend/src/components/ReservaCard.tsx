@@ -27,36 +27,37 @@ import { Button } from "@/components/ui/button";
 
 interface ReservaCardProps {
   reserva: Reserva;
-  veiculoMap: Record<number, string>;
-  motoristaMap: Record<number, string>;
   onCancel?: (id: number) => void;
 }
 
 const getStatusBadgeClasses = (status: Reserva["status"]) => {
-  switch (status) {
-    case "Aprovado":
+  switch (status.toLowerCase()) {
+    case "aprovado":
       return "bg-green-100 text-green-800 hover:bg-green-200";
-    case "Negado":
+    case "negado":
       return "bg-red-100 text-red-800 hover:bg-red-200";
-    case "Pendente":
+    case "pendente":
       return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
     default:
       return "bg-gray-100 text-gray-800";
   }
 };
 
-export function ReservaCard({
-  reserva,
-  veiculoMap,
-  motoristaMap,
-  onCancel,
-}: ReservaCardProps) {
-  const veiculoNome = reserva.veiculo
-    ? veiculoMap[parseInt(reserva.veiculo, 10)] || reserva.veiculo
+export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
+  const veiculoNome = reserva.veiculo_designado
+    ? `${reserva.veiculo_designado.modelo} - ${reserva.veiculo_designado.placa}`
     : "-";
-  const motoristaNome = reserva.motorista
-    ? motoristaMap[parseInt(reserva.motorista, 10)] || reserva.motorista
+  const motoristaNome = reserva.motorista_designado
+    ? reserva.motorista_designado.nome_motorista
     : "-";
+
+  // Aggregate passengers
+  const passageirosList = [
+    reserva.passageiro1,
+    reserva.passageiro2,
+    reserva.passageiro3,
+    reserva.passageiro4,
+  ].filter(Boolean);
 
   return (
     <Card key={reserva.id} className="mb-4">
@@ -74,9 +75,10 @@ export function ReservaCard({
             <span className="font-medium">Passageiros:</span>
           </div>
           <ul className="list-disc list-inside ml-6">
-            {reserva.passageiros.map((p, i) => (
+            {passageirosList.map((p, i) => (
               <li key={i}>{p}</li>
             ))}
+            {passageirosList.length === 0 && <li>-</li>}
           </ul>
         </div>
         <div className="space-y-3">
@@ -93,11 +95,12 @@ export function ReservaCard({
               <span className="font-medium">Paradas:</span>
             </div>
             <div className="flex gap-2 flex-wrap">
-              {reserva.paradas.map((p, i) => (
-                <Badge key={i} variant="outline" className="bg-muted">
-                  {p}
-                </Badge>
-              ))}
+              {Array.isArray(reserva.paradas) &&
+                reserva.paradas.map((p, i) => (
+                  <Badge key={i} variant="outline" className="bg-muted">
+                    {p.local}
+                  </Badge>
+                ))}
             </div>
           </div>
           <div>
@@ -106,37 +109,35 @@ export function ReservaCard({
               <span className="font-medium">Observações</span>
             </div>
             <p className="text-sm">
-              <strong>Solicitante:</strong> {reserva.obsSolicitante ?? "-"}
+              <strong>Solicitante:</strong> {reserva.observacao ?? "-"}
             </p>
             <p className="text-sm mt-1">
-              <strong>Administrador:</strong> {reserva.obsAdmin ?? "-"}
+              <strong>Administrador:</strong>{" "}
+              {reserva.observacao_autorizador ?? "-"}
             </p>
           </div>
-          {reserva.status !== "Pendente" && (
+          {reserva.status.toLowerCase() !== "pendente" && (
             <div className="border-t pt-4 mt-4">
               <div className="flex items-center gap-2 mb-2">
-                {reserva.status === "Aprovado" ? (
+                {reserva.status.toLowerCase() === "aprovado" ? (
                   <CheckCircle className="w-4 h-4 text-green-600" />
                 ) : (
                   <XCircle className="w-4 h-4 text-red-600" />
                 )}
                 <span className="font-medium">
-                  {reserva.status === "Aprovado"
+                  {reserva.status.toLowerCase() === "aprovado"
                     ? "Aprovado por:"
-                    : reserva.status === "Cancelado"
+                    : reserva.status.toLowerCase() === "cancelado"
                     ? "Cancelado por:"
                     : "Negado por:"}
                 </span>
               </div>
               <p className="ml-6 text-sm">
-                <strong>Autorizador:</strong> {reserva.autorizador ?? "N/A"}
+                <strong>Autorizador:</strong> {reserva.autorizador_id ?? "N/A"}
               </p>
               <p className="ml-6 text-sm">
                 <strong>Data:</strong>{" "}
-                {formatDateTime(
-                  reserva.data_autorizacao,
-                  reserva.horario_autorizacao
-                )}
+                {formatDateTime(reserva.data_autorizacao, "")}
               </p>
             </div>
           )}

@@ -8,8 +8,16 @@ export function cn(...inputs: ClassValue[]) {
 export const formatDateTime = (dateStr?: string, timeStr?: string) => {
   if (!dateStr) return "-";
   try {
-    // Handles ISO strings and date parts
-    const d = new Date(`${dateStr}T${timeStr || "00:00"}`);
+    let d: Date;
+
+    // Check if dateStr is a full ISO string (e.g. 2025-12-10T08:58:56.760321-03:00)
+    if (dateStr.includes("T")) {
+      d = new Date(dateStr);
+    } else {
+      // Legacy behavior: combining date part and time part
+      d = new Date(`${dateStr}T${timeStr || "00:00"}`);
+    }
+
     if (isNaN(d.getTime())) return `${dateStr} ${timeStr || ""}`.trim();
 
     const day = String(d.getDate()).padStart(2, "0");

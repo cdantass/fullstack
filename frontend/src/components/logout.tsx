@@ -1,10 +1,14 @@
 import { LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 
+import { useAuth } from "@/context/auth-context";
+
 const LogoutButton = () => {
+  const { logout } = useAuth();
+
   const handleLogout = () => {
     console.log("Logout clicked");
-    window.location.href = "/";
+    logout();
   };
 
   return (

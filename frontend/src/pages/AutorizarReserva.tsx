@@ -62,17 +62,19 @@ interface Veiculo {
 }
 
 const getStatusBadgeClasses = (status: Reserva["status"]) => {
-  switch (status) {
-    case "Aprovado":
+  switch (status.toLowerCase()) {
+    case "aprovado":
       return "bg-green-100 text-green-800 hover:bg-green-200";
-    case "Negado":
+    case "recusado":
       return "bg-red-100 text-red-800 hover:bg-red-200";
-    case "Pendente":
+    case "pendente":
       return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
-    case "Concluido":
+    case "concluido":
       return "bg-blue-100 text-blue-800 hover:bg-blue-200";
-    case "Viagem compartilhada":
+    case "viagem compartilhada":
       return "bg-purple-100 text-purple-800 hover:bg-purple-200";
+    case "cancelado":
+      return "bg-gray-100 text-gray-800 hover:bg-gray-200";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -177,11 +179,20 @@ export default function AutorizarPage() {
 
     // Aggregate unique stops and passengers
     const allParadas = Array.from(
-      new Set(selected.flatMap((r) => r.paradas))
-    ).filter(Boolean);
+      new Set(selected.flatMap((r) => r.paradas.map((p) => p.local)))
+    )
+      .filter(Boolean)
+      .map((local) => ({ local }));
+
     const allPassageiros = Array.from(
-      new Set(selected.flatMap((r) => r.passageiros))
-    ).filter(Boolean);
+      new Set(
+        selected.flatMap((r) =>
+          [r.passageiro1, r.passageiro2, r.passageiro3, r.passageiro4].filter(
+            Boolean
+          )
+        )
+      )
+    ).filter(Boolean) as string[];
 
     if (firstReserva) {
       setCombineFormData({
@@ -189,7 +200,7 @@ export default function AutorizarPage() {
         horario_saida: firstReserva.horario_saida,
         data_retorno: firstReserva.data_retorno,
         horario_retorno: firstReserva.horario_retorno,
-        paradas: allParadas,
+        paradas: allParadas.map((p) => p.local), // keeping internal state as strings for inputs
         passageiros: allPassageiros,
         motorista_id: "",
         veiculo_id: "",
@@ -207,7 +218,7 @@ export default function AutorizarPage() {
 
     // Generate a new sequential ID for the shared ride
     const maxId = reservas.reduce((max, r) => Math.max(max, r.id), 0);
-    const sharedId = String(maxId + 1);
+    const sharedId = String(maxId + 1); // Or use UUID if backend supports
 
     const now = new Date();
     const status = "Viagem compartilhada";
@@ -218,6 +229,10 @@ export default function AutorizarPage() {
           const reserva = reservas.find((r) => r.id === id);
           if (!reserva) return;
 
+          // Distribute passengers back if needed, or keep them empty/same?
+          // For shared ride, usually we might just update the main status and driver.
+          // I will keep existing passengers but update status and driver.
+
           const apiPayload = {
             ...reserva,
             viagemCompartilhadaId: sharedId,
@@ -225,55 +240,34 @@ export default function AutorizarPage() {
             horario_saida: combineFormData.horario_saida,
             data_retorno: combineFormData.data_retorno,
             horario_retorno: combineFormData.horario_retorno,
-            paradas: combineFormData.paradas,
-            passageiros: combineFormData.passageiros,
+            // We usually don't overwrite passengers on individual requests unless splitting?
+            // But if we are combining, we might want to ensure they all show the same info?
+            // Assuming we just update the ride details:
             status: status,
-            motorista_id:
-              status === "Viagem compartilhada"
-                ? parseInt(combineFormData.motorista_id, 10)
-                : null,
-            veiculo_id:
-              status === "Viagem compartilhada"
-                ? parseInt(combineFormData.veiculo_id, 10)
-                : null,
+            motorista_designado: {
+              id: parseInt(combineFormData.motorista_id, 10),
+              nome_motorista:
+                motoristaMap[parseInt(combineFormData.motorista_id, 10)] || "",
+              status: "indisponivel", // assuming becomes busy
+            },
+            veiculo_designado: {
+              id: parseInt(combineFormData.veiculo_id, 10),
+              placa: "", // fetch details if needed, but for now just ID is crucial for backend often
+              modelo:
+                veiculoMap[parseInt(combineFormData.veiculo_id, 10)]?.split(
+                  " - "
+                )[0] || "",
+              ano: 0,
+              status: "indisponivel",
+            },
             observacao_autorizador: combineFormData.observacao,
-            autorizador:
-              status === "Viagem compartilhada" ? authUser?.name : undefined,
+            autorizador_id: authUser?.name,
+            data_autorizacao: now.toISOString(), // Full ISO string
           };
 
           await api.put(`/api/chamados/${id}/`, apiPayload);
 
-          updateReserva(id, {
-            viagemCompartilhadaId: sharedId,
-            data_saida: combineFormData.data_saida,
-            horario_saida: combineFormData.horario_saida,
-            data_retorno: combineFormData.data_retorno,
-            horario_retorno: combineFormData.horario_retorno,
-            paradas: combineFormData.paradas,
-            passageiros: combineFormData.passageiros,
-            status: status as Reserva["status"],
-            motorista:
-              status === "Viagem compartilhada"
-                ? motoristaMap[parseInt(combineFormData.motorista_id, 10)]
-                : undefined,
-            veiculo:
-              status === "Viagem compartilhada"
-                ? veiculoMap[parseInt(combineFormData.veiculo_id, 10)]
-                : undefined,
-            obsAdmin: combineFormData.observacao,
-            autorizador:
-              status === "Viagem compartilhada" ? authUser?.name : undefined,
-            data_autorizacao:
-              status === "Viagem compartilhada"
-                ? now.toISOString().split("T")[0]
-                : undefined,
-            horario_autorizacao:
-              status === "Viagem compartilhada"
-                ? `${String(now.getHours()).padStart(2, "0")}:${String(
-                    now.getMinutes()
-                  ).padStart(2, "0")}`
-                : undefined,
-          });
+          updateReserva(id, apiPayload as Partial<Reserva>);
         })
       );
       toast.success("Viagens combinadas e atualizadas com sucesso!");
@@ -308,7 +302,7 @@ export default function AutorizarPage() {
       const linkedReservas = reservas.filter(
         (r) =>
           r.viagemCompartilhadaId === reservaOriginal.viagemCompartilhadaId &&
-          r.status === "Pendente"
+          r.status.toLowerCase() === "pendente"
       );
 
       if (linkedReservas.length > 1) {
@@ -329,35 +323,39 @@ export default function AutorizarPage() {
           const targetReserva = reservas.find((r) => r.id === targetId);
           if (!targetReserva) return;
 
+          const motoristaObj =
+            status === "aprovado"
+              ? {
+                  id: parseInt(motoristaId, 10),
+                  nome_motorista: motoristaMap[parseInt(motoristaId, 10)] || "",
+                  status: "indisponivel",
+                }
+              : undefined;
+
+          const veiculoObj =
+            status === "aprovado"
+              ? {
+                  id: parseInt(veiculoId, 10),
+                  placa: "",
+                  modelo:
+                    veiculoMap[parseInt(veiculoId, 10)]?.split(" - ")[0] || "",
+                  ano: 0,
+                  status: "indisponivel",
+                }
+              : undefined;
+
           const apiPayload = {
             ...targetReserva,
-            status: status,
+            status: status, // "aprovado" or "recusado"
             observacao_autorizador: obs[id] ?? "",
-            motorista_id:
-              status === "aprovado" ? parseInt(motoristaId, 10) : null,
-            veiculo_id: status === "aprovado" ? parseInt(veiculoId, 10) : null,
-            autorizador: authUser?.name,
+            motorista_designado: motoristaObj,
+            veiculo_designado: veiculoObj,
+            autorizador_id: authUser?.email || authUser?.name,
+            data_autorizacao: now.toISOString(),
           };
 
           await api.put(`/api/chamados/${targetId}/`, apiPayload);
-          updateReserva(targetId, {
-            status: status === "aprovado" ? "Aprovado" : "Negado",
-            obsAdmin: obs[id] ?? "",
-            motorista:
-              status === "aprovado" && motoristaId
-                ? motoristaMap[parseInt(motoristaId, 10)]
-                : undefined,
-            veiculo:
-              status === "aprovado" && veiculoId
-                ? veiculoMap[parseInt(veiculoId, 10)]
-                : undefined,
-            autorizador: authUser?.name,
-            data_autorizacao: now.toISOString().split("T")[0],
-            horario_autorizacao: `${String(now.getHours()).padStart(
-              2,
-              "0"
-            )}:${String(now.getMinutes()).padStart(2, "0")}`,
-          });
+          updateReserva(targetId, apiPayload as Partial<Reserva>);
           setObs((s) => ({ ...s, [targetId]: "" }));
         })
       );
@@ -398,7 +396,9 @@ export default function AutorizarPage() {
     let data = [...reservas];
 
     if (filter) {
-      data = data.filter((r) => r.status === filter);
+      data = data.filter(
+        (r) => r.status.toLowerCase() === filter.toLowerCase()
+      );
     }
 
     if (searchTerm) {
@@ -406,13 +406,16 @@ export default function AutorizarPage() {
       const fieldMatch = lowerSearch.match(/^(\w+):(.+)$/);
 
       data = data.filter((r) => {
-        const motoristaName = r.motorista
-          ? motoristaMap[parseInt(r.motorista, 10)] || r.motorista
+        const motoristaName = r.motorista_designado?.nome_motorista || "";
+        const veiculoInfo = r.veiculo_designado
+          ? `${r.veiculo_designado.modelo} - ${r.veiculo_designado.placa}`
           : "";
 
-        const veiculoInfo = r.veiculo
-          ? veiculoMap[parseInt(r.veiculo, 10)] || r.veiculo
-          : "";
+        // Helper to check passengers
+        const hasPassageiro = (term: string) =>
+          [r.passageiro1, r.passageiro2, r.passageiro3, r.passageiro4].some(
+            (p) => p && p.toLowerCase().includes(term)
+          );
 
         if (fieldMatch) {
           const [, field, value] = fieldMatch;
@@ -420,34 +423,27 @@ export default function AutorizarPage() {
 
           switch (field) {
             case "passageiros":
-              return r.passageiros.some((p) =>
-                p.toLowerCase().includes(cleanValue)
-              );
+              return hasPassageiro(cleanValue);
             case "motorista":
-              return (
-                motoristaName &&
-                motoristaName.toLowerCase().includes(cleanValue)
-              );
+              return motoristaName.toLowerCase().includes(cleanValue);
             case "veiculo":
-              return (
-                veiculoInfo && veiculoInfo.toLowerCase().includes(cleanValue)
-              );
+              return veiculoInfo.toLowerCase().includes(cleanValue);
             case "solicitante":
-              return r.solicitante.toLowerCase().includes(cleanValue);
-            case "unidade":
-              return r.unidade.toLowerCase().includes(cleanValue);
+              return r.solicitante_id.toLowerCase().includes(cleanValue);
+            // deleted: case "unidade": (field removed)
             case "municipio":
               return r.municipio.toLowerCase().includes(cleanValue);
             case "obs":
               return (
-                (r.obsSolicitante &&
-                  r.obsSolicitante.toLowerCase().includes(cleanValue)) ||
-                (r.obsAdmin && r.obsAdmin.toLowerCase().includes(cleanValue))
+                (r.observacao &&
+                  r.observacao.toLowerCase().includes(cleanValue)) ||
+                (r.observacao_autorizador &&
+                  r.observacao_autorizador.toLowerCase().includes(cleanValue))
               );
             case "autorizador":
               return (
-                r.autorizador &&
-                r.autorizador.toLowerCase().includes(cleanValue)
+                r.autorizador_id &&
+                r.autorizador_id.toLowerCase().includes(cleanValue)
               );
             default:
               break;
@@ -455,29 +451,26 @@ export default function AutorizarPage() {
         }
 
         return (
-          r.solicitante.toLowerCase().includes(lowerSearch) ||
-          r.unidade.toLowerCase().includes(lowerSearch) ||
+          r.solicitante_id.toLowerCase().includes(lowerSearch) ||
           r.municipio.toLowerCase().includes(lowerSearch) ||
-          (motoristaName &&
-            motoristaName.toLowerCase().includes(lowerSearch)) ||
-          (veiculoInfo && veiculoInfo.toLowerCase().includes(lowerSearch)) ||
-          (r.obsSolicitante &&
-            r.obsSolicitante.toLowerCase().includes(lowerSearch)) ||
-          (r.obsAdmin && r.obsAdmin.toLowerCase().includes(lowerSearch)) ||
-          (r.autorizador &&
-            r.autorizador.toLowerCase().includes(lowerSearch)) ||
-          r.passageiros.some((p) => p.toLowerCase().includes(lowerSearch)) ||
-          r.paradas.some((p) => p.toLowerCase().includes(lowerSearch))
+          motoristaName.toLowerCase().includes(lowerSearch) ||
+          veiculoInfo.toLowerCase().includes(lowerSearch) ||
+          (r.observacao && r.observacao.toLowerCase().includes(lowerSearch)) ||
+          (r.observacao_autorizador &&
+            r.observacao_autorizador.toLowerCase().includes(lowerSearch)) ||
+          (r.autorizador_id &&
+            r.autorizador_id.toLowerCase().includes(lowerSearch)) ||
+          hasPassageiro(lowerSearch) ||
+          r.paradas.some((p) => p.local.toLowerCase().includes(lowerSearch))
         );
       });
     }
 
     return data.sort(
       (a, b) =>
-        new Date(b.data_solicitacao).getTime() -
-        new Date(a.data_solicitacao).getTime()
+        new Date(b.data_criacao).getTime() - new Date(a.data_criacao).getTime()
     );
-  }, [reservas, filter, searchTerm, motoristaMap, veiculoMap]);
+  }, [reservas, filter, searchTerm]);
 
   const filterStatuses = [
     "Todos",
@@ -550,9 +543,11 @@ export default function AutorizarPage() {
                 <th className="p-3 w-[50px]">
                   <Checkbox
                     checked={
-                      filteredReservas.some((r) => r.status === "Pendente") &&
+                      filteredReservas.some(
+                        (r) => r.status.toLowerCase() === "pendente"
+                      ) &&
                       filteredReservas
-                        .filter((r) => r.status === "Pendente")
+                        .filter((r) => r.status.toLowerCase() === "pendente")
                         .every((r) => selectedReservas.includes(r.id))
                     }
                     onCheckedChange={handleSelectAll}
@@ -560,7 +555,7 @@ export default function AutorizarPage() {
                 </th>
                 <th className="p-3">ID</th>
                 <th className="p-3">Data Solicitação</th>
-                <th className="p-3">Solicitante / Unidade</th>
+                <th className="p-3">Solicitante</th>
                 <th className="p-3">Município</th>
                 <th className="p-3">Data Saída</th>
                 <th className="p-3">Data Retorno</th>
@@ -587,7 +582,7 @@ export default function AutorizarPage() {
                         className="p-3 whitespace-nowrap"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {row.status === "Pendente" && (
+                        {row.status.toLowerCase() === "pendente" && (
                           <Checkbox
                             checked={selectedReservas.includes(row.id)}
                             onCheckedChange={() => handleSelectReserva(row.id)}
@@ -604,12 +599,13 @@ export default function AutorizarPage() {
                       </td>
                       <td className="p-3 whitespace-nowrap">
                         {formatDateTime(
-                          row.data_solicitacao,
-                          row.horario_solicitacao
+                          row.data_criacao,
+                          "" // Time included in ISO
                         )}
                       </td>
                       <td className="p-3">
-                        {row.solicitante} / {row.unidade}
+                        {row.solicitante_id}{" "}
+                        {row.unidade ? `/ ${row.unidade}` : ""}
                       </td>
                       <td className="p-3">{row.municipio}</td>
                       <td className="p-3 whitespace-nowrap">
@@ -695,12 +691,8 @@ export default function AutorizarPage() {
                     {expanded === row.id && (
                       <tr>
                         <td colSpan={8} className="p-4 bg-muted/30">
-                          <ReservaCard
-                            reserva={row}
-                            veiculoMap={veiculoMap}
-                            motoristaMap={motoristaMap}
-                          />
-                          {row.status === "Pendente" && (
+                          <ReservaCard reserva={row} />
+                          {row.status.toLowerCase() === "pendente" && (
                             <div className="border-t pt-4 mt-4 space-y-4">
                               <div>
                                 <label className="text-sm font-medium block mb-1">
@@ -724,7 +716,12 @@ export default function AutorizarPage() {
                                     Escolher Motorista
                                   </label>
                                   <Select
-                                    value={selectedMotoristas[row.id] ?? ""}
+                                    value={
+                                      selectedMotoristas[row.id] ??
+                                      (row.motorista_designado
+                                        ? String(row.motorista_designado.id)
+                                        : "")
+                                    }
                                     onValueChange={(value) =>
                                       setSelectedMotoristas((prev) => ({
                                         ...prev,
@@ -753,7 +750,12 @@ export default function AutorizarPage() {
                                     Escolher Veículo
                                   </label>
                                   <Select
-                                    value={selectedVeiculos[row.id] ?? ""}
+                                    value={
+                                      selectedVeiculos[row.id] ??
+                                      (row.veiculo_designado
+                                        ? String(row.veiculo_designado.id)
+                                        : "")
+                                    }
                                     onValueChange={(value) =>
                                       setSelectedVeiculos((prev) => ({
                                         ...prev,
@@ -1105,15 +1107,30 @@ export default function AutorizarPage() {
 
               const solicitantes = Array.from(
                 new Set(
-                  sharedReservas.map((r) => `${r.solicitante} / ${r.unidade}`)
+                  sharedReservas.map(
+                    (r) =>
+                      `${r.solicitante_id}${r.unidade ? ` / ${r.unidade}` : ""}`
+                  )
                 )
               );
               const passageiros = Array.from(
-                new Set(sharedReservas.flatMap((r) => r.passageiros))
-              );
+                new Set(
+                  sharedReservas.flatMap((r) =>
+                    [
+                      r.passageiro1,
+                      r.passageiro2,
+                      r.passageiro3,
+                      r.passageiro4,
+                    ].filter(Boolean)
+                  )
+                )
+              ).filter(Boolean) as string[];
+
               const paradas = Array.from(
-                new Set(sharedReservas.flatMap((r) => r.paradas))
-              );
+                new Set(
+                  sharedReservas.flatMap((r) => r.paradas.map((p) => p.local))
+                )
+              ).filter(Boolean);
 
               return (
                 <div className="grid gap-6 py-4">
@@ -1142,9 +1159,8 @@ export default function AutorizarPage() {
                         Motorista
                       </h4>
                       <p className="font-medium">
-                        {first.motorista
-                          ? motoristaMap[parseInt(first.motorista, 10)] ||
-                            first.motorista
+                        {first.motorista_designado
+                          ? first.motorista_designado.nome_motorista
                           : "-"}
                       </p>
                     </div>
@@ -1153,9 +1169,8 @@ export default function AutorizarPage() {
                         Veículo
                       </h4>
                       <p className="font-medium">
-                        {first.veiculo
-                          ? veiculoMap[parseInt(first.veiculo, 10)] ||
-                            first.veiculo
+                        {first.veiculo_designado
+                          ? `${first.veiculo_designado.modelo} - ${first.veiculo_designado.placa}`
                           : "-"}
                       </p>
                     </div>
@@ -1200,12 +1215,12 @@ export default function AutorizarPage() {
                     </div>
                   </div>
 
-                  {first.obsAdmin && (
+                  {first.observacao_autorizador && (
                     <div className="space-y-1">
                       <h4 className="text-sm font-medium text-muted-foreground">
                         Observações do Administrador
                       </h4>
-                      <p className="text-sm">{first.obsAdmin}</p>
+                      <p className="text-sm">{first.observacao_autorizador}</p>
                     </div>
                   )}
                 </div>

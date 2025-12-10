@@ -45,6 +45,7 @@ import api from "@/api";
 import { cn } from "@/lib/utils";
 import { useReservas } from "@/context/reserva-context-hook";
 
+// Zod schema for form-level validation (keeps UI behaviour)
 const formSchema = z
   .object({
     municipio: z.string().min(1, "Selecione um município."),
@@ -223,29 +224,72 @@ export default function ReservaPage() {
     return true;
   };
 
+  // Helper to build ISO time string from date and time inputs
+  const buildISOTime = (date: Date, timeStr: string) => {
+    // timeStr expected in "HH:mm" (from <input type="time" />)
+    if (!timeStr) return new Date().toISOString();
+
+    const [hours, minutes] = timeStr.split(":");
+    const d = new Date(date);
+    d.setHours(Number(hours));
+    d.setMinutes(Number(minutes));
+    d.setSeconds(0);
+    d.setMilliseconds(0);
+    return d.toISOString();
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
 
-    const formatDate = (date: Date) => date.toISOString().split("T")[0];
-
-    const payload = {
-      data_saida: formatDate(values.dataSaida),
-      horario_saida: values.horarioSaida,
-      data_retorno: formatDate(values.dataRetorno),
-      horario_retorno: values.horarioRetorno,
-      municipio_id: values.municipio,
-      municipio_nome: municipios.find((m) => String(m.id) === values.municipio)
-        ?.nome,
-      observacao: values.observacao || "",
-      passageiros: values.passageiros,
-      paradas: values.paradas,
-    };
-
     try {
+      // Transform passengers array into explicit passageiro1..4 fields
+      const passageiros = values.passageiros || [];
+      const passengerFields: Record<string, string> = {};
+      for (let i = 0; i < 4; i++) {
+        passengerFields[`passageiro${i + 1}`] = passageiros[i]
+          ? passageiros[i]
+          : "";
+      }
+
+      // Transform paradas array into array of objects { local }
+      const paradasTransformed = (values.paradas || []).map((p) => ({
+        local: p,
+      }));
+
+      // Build ISO-like horario values
+      const horario_saida_iso = buildISOTime(
+        values.dataSaida,
+        values.horarioSaida
+      );
+      const horario_retorno_iso = buildISOTime(
+        values.dataRetorno,
+        values.horarioRetorno
+      );
+
+      // Municipio should be numeric according to your confirmation
+      const municipioNumeric = Number(values.municipio);
+
+      const payload = {
+        veiculo_designado: "",
+        motorista_designado: "",
+        data_saida: format(values.dataSaida, "yyyy-MM-dd"),
+        horario_saida: values.horarioSaida,
+        data_retorno: format(values.dataRetorno, "yyyy-MM-dd"),
+        horario_retorno: values.horarioRetorno,
+        // spread passageiro1..4
+        ...passengerFields,
+        municipio: municipioNumeric,
+        observacao: values.observacao || "",
+        paradas: paradasTransformed,
+      } as const;
+
       const response = await api.post("/api/chamados/", payload);
+
+      // update local context and notify
       addReserva(response.data);
       toast.success("Solicitação enviada com sucesso!");
 
+      // reset form and local inputs
       form.reset({
         municipio: "",
         paradas: [],
@@ -256,7 +300,6 @@ export default function ReservaPage() {
         dataSaida: new Date(),
         dataRetorno: new Date(),
       });
-
       setParadaInput("");
       setPassageiroInput("");
     } catch (error: any) {

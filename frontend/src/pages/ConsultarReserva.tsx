@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
 import { useReservas, type Reserva } from "@/context/reserva-context-hook";
 import { useAuth } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +10,6 @@ import { ArrowUpDown } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
 
-import api from "@/api";
 import {
   Select,
   SelectContent,
@@ -30,28 +28,20 @@ type SortConfig = {
   direction: "ascending" | "descending";
 };
 
-interface Motorista {
-  id: number;
-  nome_motorista: string;
-}
-interface Veiculo {
-  id: number;
-  placa: string;
-  modelo: string;
-}
-
-const getStatusBadgeClasses = (status: Reserva["status"]) => {
-  switch (status) {
-    case "Aprovado":
+const getStatusBadgeClasses = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "aprovado":
       return "bg-green-100 text-green-800 hover:bg-green-200";
-    case "Negado":
+    case "recusado":
       return "bg-red-100 text-red-800 hover:bg-red-200";
-    case "Pendente":
+    case "pendente":
       return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
-    case "Concluido":
+    case "concluido":
       return "bg-blue-100 text-blue-800 hover:bg-blue-200";
-    case "Viagem compartilhada":
+    case "viagem compartilhada":
       return "bg-purple-100 text-purple-800 hover:bg-purple-200";
+    case "cancelado":
+      return "bg-gray-100 text-gray-800 hover:bg-gray-200";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -62,13 +52,11 @@ export default function ConsultarReservaPage() {
   const { user: authUser } = useAuth();
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [filter, setFilter] = React.useState<string | null>(null);
-  const [motoristas, setMotoristas] = React.useState<Motorista[]>([]);
-  const [veiculos, setVeiculos] = React.useState<Veiculo[]>([]);
   const [startDate, setStartDate] = React.useState<string>("");
   const [endDate, setEndDate] = React.useState<string>("");
   const [currentPage, setCurrentPage] = React.useState(1);
   const [sortConfig, setSortConfig] = React.useState<SortConfig | null>({
-    key: "data_solicitacao",
+    key: "data_criacao",
     direction: "descending",
   });
   const [timeRange, setTimeRange] = React.useState<
@@ -79,38 +67,9 @@ export default function ConsultarReservaPage() {
 
   React.useEffect(() => {
     fetchReservas();
-    const fetchOptions = async () => {
-      try {
-        const [mRes, vRes] = await Promise.all([
-          api.get("/api/motoristas/"),
-          api.get("/api/veiculos/"),
-        ]);
-        setMotoristas(mRes.data);
-        setVeiculos(vRes.data);
-      } catch {
-        toast.error("Não foi possível carregar motoristas ou veículos.");
-      }
-    };
-    fetchOptions();
+    // No need to fetch motoristas/veiculos for this page anymore
+    // as they are embedded in the reserva object for display purposes
   }, [fetchReservas]);
-
-  const motoristaMap = React.useMemo(
-    () =>
-      motoristas.reduce(
-        (acc, m) => ({ ...acc, [m.id]: m.nome_motorista }),
-        {} as Record<number, string>
-      ),
-    [motoristas]
-  );
-
-  const veiculoMap = React.useMemo(
-    () =>
-      veiculos.reduce(
-        (acc, v) => ({ ...acc, [v.id]: `${v.modelo} - ${v.placa}` }),
-        {} as Record<number, string>
-      ),
-    [veiculos]
-  );
 
   const requestSort = (key: keyof Reserva) => {
     let direction: "ascending" | "descending" = "ascending";
@@ -128,27 +87,28 @@ export default function ConsultarReservaPage() {
     let data = [...reservas];
     if (!authUser) return [];
 
+    // Gestor can see everything (or specific filters), regular user only theirs
     if (authUser.usertype !== "gestor") {
-      data = data.filter((r) => r.solicitante === authUser.name);
+      data = data.filter((r) => r.solicitante_id === authUser.name);
     }
 
+    // Date filtering
     if (timeRange === "custom") {
       if (startDate) {
         data = data.filter(
-          (r) => new Date(r.data_solicitacao) >= new Date(startDate)
+          (r) => new Date(r.data_criacao) >= new Date(startDate)
         );
       }
       if (endDate) {
         const endOfDay = new Date(endDate);
         endOfDay.setHours(23, 59, 59, 999);
-        data = data.filter((r) => new Date(r.data_solicitacao) <= endOfDay);
+        data = data.filter((r) => new Date(r.data_criacao) <= endOfDay);
       }
     } else {
       const now = new Date();
       data = data.filter((r) => {
-        const solicitacaoDate = new Date(
-          `${r.data_solicitacao}T${r.horario_solicitacao}`
-        );
+        // data_criacao is full ISO string now
+        const solicitacaoDate = new Date(r.data_criacao);
         const diffTime = now.getTime() - solicitacaoDate.getTime();
         const diffDays = diffTime / (1000 * 3600 * 24);
 
@@ -159,21 +119,31 @@ export default function ConsultarReservaPage() {
       });
     }
 
+    // Status filtering
     if (filter) {
-      data = data.filter((r) => r.status === filter);
+      data = data.filter(
+        (r) => r.status.toLowerCase() === filter.toLowerCase()
+      );
     }
 
+    // Search term filtering
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
       const fieldMatch = lowerSearch.match(/^(\w+):(.+)$/);
 
       data = data.filter((r) => {
-        const motoristaName = r.motorista
-          ? motoristaMap[parseInt(r.motorista, 10)] || r.motorista
+        const motoristaName = r.motorista_designado?.nome_motorista || "";
+        const veiculoInfo = r.veiculo_designado
+          ? `${r.veiculo_designado.modelo} ${r.veiculo_designado.placa}`
           : "";
-        const veiculoInfo = r.veiculo
-          ? veiculoMap[parseInt(r.veiculo, 10)] || r.veiculo
-          : "";
+        const passageiros = [
+          r.passageiro1,
+          r.passageiro2,
+          r.passageiro3,
+          r.passageiro4,
+        ]
+          .filter(Boolean)
+          .join(" ");
 
         if (fieldMatch) {
           const [, field, value] = fieldMatch;
@@ -181,34 +151,26 @@ export default function ConsultarReservaPage() {
 
           switch (field) {
             case "passageiros":
-              return r.passageiros.some((p) =>
-                p.toLowerCase().includes(cleanValue)
-              );
+              return passageiros.toLowerCase().includes(cleanValue);
             case "motorista":
-              return (
-                motoristaName &&
-                motoristaName.toLowerCase().includes(cleanValue)
-              );
+              return motoristaName.toLowerCase().includes(cleanValue);
             case "veiculo":
-              return (
-                veiculoInfo && veiculoInfo.toLowerCase().includes(cleanValue)
-              );
+              return veiculoInfo.toLowerCase().includes(cleanValue);
             case "solicitante":
-              return r.solicitante.toLowerCase().includes(cleanValue);
-            case "unidade":
-              return r.unidade.toLowerCase().includes(cleanValue);
+              return r.solicitante_id.toLowerCase().includes(cleanValue);
             case "municipio":
               return r.municipio.toLowerCase().includes(cleanValue);
             case "obs":
               return (
-                (r.obsSolicitante &&
-                  r.obsSolicitante.toLowerCase().includes(cleanValue)) ||
-                (r.obsAdmin && r.obsAdmin.toLowerCase().includes(cleanValue))
+                (r.observacao &&
+                  r.observacao.toLowerCase().includes(cleanValue)) ||
+                (r.observacao_autorizador &&
+                  r.observacao_autorizador.toLowerCase().includes(cleanValue))
               );
             case "autorizador":
               return (
-                r.autorizador &&
-                r.autorizador.toLowerCase().includes(cleanValue)
+                r.autorizador_id &&
+                r.autorizador_id.toLowerCase().includes(cleanValue)
               );
             case "id":
               return (
@@ -224,19 +186,17 @@ export default function ConsultarReservaPage() {
         }
 
         return (
-          r.solicitante.toLowerCase().includes(lowerSearch) ||
-          r.unidade.toLowerCase().includes(lowerSearch) ||
+          r.solicitante_id.toLowerCase().includes(lowerSearch) ||
           r.municipio.toLowerCase().includes(lowerSearch) ||
-          (motoristaName &&
-            motoristaName.toLowerCase().includes(lowerSearch)) ||
-          (veiculoInfo && veiculoInfo.toLowerCase().includes(lowerSearch)) ||
-          (r.obsSolicitante &&
-            r.obsSolicitante.toLowerCase().includes(lowerSearch)) ||
-          (r.obsAdmin && r.obsAdmin.toLowerCase().includes(lowerSearch)) ||
-          (r.autorizador &&
-            r.autorizador.toLowerCase().includes(lowerSearch)) ||
-          r.passageiros.some((p) => p.toLowerCase().includes(lowerSearch)) ||
-          r.paradas.some((p) => p.toLowerCase().includes(lowerSearch)) ||
+          motoristaName.toLowerCase().includes(lowerSearch) ||
+          veiculoInfo.toLowerCase().includes(lowerSearch) ||
+          (r.observacao && r.observacao.toLowerCase().includes(lowerSearch)) ||
+          (r.observacao_autorizador &&
+            r.observacao_autorizador.toLowerCase().includes(lowerSearch)) ||
+          (r.autorizador_id &&
+            r.autorizador_id.toLowerCase().includes(lowerSearch)) ||
+          passageiros.toLowerCase().includes(lowerSearch) ||
+          r.paradas.some((p) => p.local.toLowerCase().includes(lowerSearch)) ||
           r.id.toString().includes(lowerSearch.replace("#", "")) ||
           (r.viagemCompartilhadaId &&
             r.viagemCompartilhadaId
@@ -272,8 +232,6 @@ export default function ConsultarReservaPage() {
     sortConfig,
     timeRange,
     searchTerm,
-    motoristaMap,
-    veiculoMap,
   ]);
 
   const totalPages = Math.ceil(sortedAndFilteredReservas.length / perPage);
@@ -282,30 +240,11 @@ export default function ConsultarReservaPage() {
     currentPage * perPage
   );
 
-  const SortableHeader = ({
-    columnKey,
-    children,
-  }: {
-    columnKey: keyof Reserva;
-    children: React.ReactNode;
-  }) => (
-    <th className="px-2 py-2 whitespace-nowrap">
-      <Button
-        variant="ghost"
-        onClick={() => requestSort(columnKey)}
-        className="px-2 py-1 h-auto w-full justify-start"
-      >
-        {children}
-        <ArrowUpDown className="ml-2 h-3 w-3" />
-      </Button>
-    </th>
-  );
-
   const filterStatuses = [
     "Todos",
     "Pendente",
     "Aprovado",
-    "Negado",
+    "Recusado", // Changed from Negado
     "Cancelado",
     "Concluido",
     "Viagem compartilhada",
@@ -425,10 +364,10 @@ export default function ConsultarReservaPage() {
               <th className="px-2 py-2 w-[150px] whitespace-nowrap">
                 <Button
                   variant="ghost"
-                  onClick={() => requestSort("data_solicitacao")}
+                  onClick={() => requestSort("data_criacao")}
                   className="px-2 py-1 h-auto w-full justify-start text-left"
                 >
-                  Data Solicitação
+                  Data Criação
                   <ArrowUpDown className="ml-2 h-3 w-3" />
                 </Button>
               </th>
@@ -436,10 +375,10 @@ export default function ConsultarReservaPage() {
               <th className="px-2 py-2 w-[220px]">
                 <Button
                   variant="ghost"
-                  onClick={() => requestSort("solicitante")}
+                  onClick={() => requestSort("solicitante_id")}
                   className="px-2 py-1 h-auto w-full justify-start text-left"
                 >
-                  Solicitante / Unidade
+                  Solicitante
                   <ArrowUpDown className="ml-2 h-3 w-3" />
                 </Button>
               </th>
@@ -491,7 +430,7 @@ export default function ConsultarReservaPage() {
               <th className="px-2 py-2 w-[140px]">
                 <Button
                   variant="ghost"
-                  onClick={() => requestSort("autorizador")}
+                  onClick={() => requestSort("autorizador_id")}
                   className="px-2 py-1 h-auto w-full justify-start text-left"
                 >
                   Autorizador
@@ -526,14 +465,9 @@ export default function ConsultarReservaPage() {
                       )}
                     </td>
                     <td className="p-2">
-                      {formatDateTime(
-                        row.data_solicitacao,
-                        row.horario_solicitacao
-                      )}
+                      {formatDateTime(row.data_criacao, "")}
                     </td>
-                    <td className="p-2 break-words">
-                      {row.solicitante} / {row.unidade}
-                    </td>
+                    <td className="p-2 break-words">{row.solicitante_id}</td>
                     <td className="p-2">{row.municipio}</td>
                     <td className="p-2">
                       {formatDateTime(row.data_saida, row.horario_saida)}
@@ -547,7 +481,7 @@ export default function ConsultarReservaPage() {
                       </Badge>
                     </td>
                     <td className="p-2 break-words">
-                      {row.autorizador ?? "-"}
+                      {row.autorizador_id ?? "-"}
                     </td>
                   </tr>
 
@@ -556,8 +490,6 @@ export default function ConsultarReservaPage() {
                       <td colSpan={8} className="p-4 bg-muted/30">
                         <ReservaCard
                           reserva={row}
-                          veiculoMap={veiculoMap}
-                          motoristaMap={motoristaMap}
                           onCancel={(id) =>
                             cancelReserva(id, authUser?.name || "Usuário")
                           }

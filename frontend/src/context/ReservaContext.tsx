@@ -50,10 +50,10 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
     try {
       await api.put(`/api/chamados/${id}/`, {
         ...reserva,
-        status: "Cancelado",
-        autorizador,
+        status: "cancelado",
+        autorizador_id: autorizador,
       });
-      updateReserva(id, { status: "Cancelado", autorizador });
+      updateReserva(id, { status: "cancelado", autorizador_id: autorizador });
       toast.success("Reserva cancelada com sucesso.");
     } catch (error) {
       console.error(error);

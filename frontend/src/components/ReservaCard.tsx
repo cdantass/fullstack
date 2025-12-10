@@ -127,9 +127,15 @@ export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
                 <span className="font-medium">
                   {reserva.status.toLowerCase() === "aprovado"
                     ? "Aprovado por:"
+                    : ["concluido", "viagem compartilhada"].includes(
+                        reserva.status.toLowerCase()
+                      )
+                    ? "Concluído/Combinado por:"
                     : reserva.status.toLowerCase() === "cancelado"
                     ? "Cancelado por:"
-                    : "Negado por:"}
+                    : reserva.status.toLowerCase() === "recusado"
+                    ? "Negado por:"
+                    : "Atualizado por:"}
                 </span>
               </div>
               <p className="ml-6 text-sm">
@@ -149,12 +155,17 @@ export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
           </Badge>
         </div>
 
-        {(reserva.status === "Pendente" || reserva.status === "Aprovado") &&
+        {["pendente", "aprovado"].includes(
+          (reserva.status || "").toLowerCase()
+        ) &&
           onCancel && (
             <div className="md:col-span-2 flex justify-end mt-4 border-t pt-4">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    size="sm"
+                  >
                     Cancelar Reserva
                   </Button>
                 </AlertDialogTrigger>

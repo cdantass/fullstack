@@ -210,6 +210,16 @@ export default function AutorizarPage() {
     setIsCombineModalOpen(true);
   };
 
+  const handleConclude = async (id: number) => {
+    try {
+      await updateReserva(id, { status: "concluido" });
+      toast.success("Reserva concluída com sucesso!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao concluir reserva.");
+    }
+  };
+
   const handleConfirmCombine = async () => {
     if (!combineFormData.motorista_id || !combineFormData.veiculo_id) {
       toast.error("Selecione um motorista e um veículo para combinar.");
@@ -621,6 +631,24 @@ export default function AutorizarPage() {
                           <Badge className={getStatusBadgeClasses(row.status)}>
                             {row.status}
                           </Badge>
+                          {["aprovado", "viagem compartilhada"].includes(
+                            (row.status || "").toLowerCase()
+                          ) && (
+                            <Tooltip delayDuration={300}>
+                              <TooltipTrigger asChild>
+                                <CheckCircle
+                                  className="h-4 w-4 text-green-600 cursor-pointer hover:text-green-800"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleConclude(row.id);
+                                  }}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Concluir Reserva</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                           {row.viagemCompartilhadaId && (
                             <Tooltip delayDuration={500}>
                               <TooltipTrigger asChild>

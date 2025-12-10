@@ -29,7 +29,7 @@ type SortConfig = {
 };
 
 const getStatusBadgeClasses = (status: string) => {
-  switch (status.toLowerCase()) {
+  switch ((status || "").toLowerCase()) {
     case "aprovado":
       return "bg-green-100 text-green-800 hover:bg-green-200";
     case "recusado":
@@ -89,7 +89,9 @@ export default function ConsultarReservaPage() {
 
     // Gestor can see everything (or specific filters), regular user only theirs
     if (authUser.usertype !== "gestor") {
-      data = data.filter((r) => r.solicitante_id === authUser.name);
+      data = data.filter(
+        (r) => String(r.solicitante_id) === String(authUser.id)
+      );
     }
 
     // Date filtering

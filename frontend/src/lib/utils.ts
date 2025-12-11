@@ -31,3 +31,12 @@ export const formatDateTime = (dateStr?: string, timeStr?: string) => {
     return `${dateStr} ${timeStr || ""}`.trim();
   }
 };
+
+export const formatStatusLabel = (status: string): string => {
+  if (!status) return "-";
+  // Replace underscores with spaces and capitalize each word
+  return status
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};

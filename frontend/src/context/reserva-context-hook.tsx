@@ -51,6 +51,7 @@ export type ReservaContextType = {
   addReserva: (r: AddReservaPayload) => Promise<void>;
   updateReserva: (id: number, updates: Partial<Reserva>) => void;
   cancelReserva: (id: number, autorizador?: string) => Promise<void>;
+  concluirReserva: (id: number) => Promise<void>;
 };
 
 export const ReservaContext = createContext<ReservaContextType | undefined>(

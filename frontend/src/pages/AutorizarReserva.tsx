@@ -41,7 +41,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import api from "@/api";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatStatusLabel } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
 
 import { CheckCircle, Link, PlusCircleIcon, X } from "lucide-react";
@@ -82,7 +82,8 @@ const getStatusBadgeClasses = (status: string) => {
 
 export default function AutorizarPage() {
   const { user: authUser } = useAuth();
-  const { reservas, updateReserva, fetchReservas } = useReservas();
+  const { reservas, updateReserva, fetchReservas, concluirReserva } =
+    useReservas();
 
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [obs, setObs] = React.useState<Record<number, string>>({});
@@ -212,11 +213,9 @@ export default function AutorizarPage() {
 
   const handleConclude = async (id: number) => {
     try {
-      await updateReserva(id, { status: "concluido" });
-      toast.success("Reserva concluída com sucesso!");
+      await concluirReserva(id);
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao concluir reserva.");
     }
   };
 
@@ -379,7 +378,7 @@ export default function AutorizarPage() {
       console.error(error);
       toast.error(
         `Falha ao ${
-          status === "aprovado" ? "aprovar" : "negar"
+          status === "aprovado" ? "aprovar" : "recusar"
         } a(s) reserva(s).`
       );
     }
@@ -629,7 +628,7 @@ export default function AutorizarPage() {
                       <td className="p-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <Badge className={getStatusBadgeClasses(row.status)}>
-                            {row.status}
+                            {formatStatusLabel(row.status)}
                           </Badge>
                           {["aprovado", "viagem compartilhada"].includes(
                             (row.status || "").toLowerCase()
@@ -637,7 +636,7 @@ export default function AutorizarPage() {
                             <Tooltip delayDuration={300}>
                               <TooltipTrigger asChild>
                                 <CheckCircle
-                                  className="h-4 w-4 text-green-600 cursor-pointer hover:text-green-800"
+                                  className="h-4 w-4 text-blue-600 cursor-pointer hover:text-blue-800"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleConclude(row.id);
@@ -825,7 +824,7 @@ export default function AutorizarPage() {
                                   }
                                   className="bg-red-600 hover:bg-red-700 text-white"
                                 >
-                                  Negar
+                                  Recusar
                                 </Button>
                               </div>
                             </div>

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowUpDown } from "lucide-react";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatStatusLabel } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
 
 import {
@@ -418,7 +418,7 @@ export default function ConsultarReservaPage() {
                 </Button>
               </th>
 
-              <th className="px-2 py-2 w-[120px]">
+              <th className="px-2 py-2 w-[160px]">
                 <Button
                   variant="ghost"
                   onClick={() => requestSort("status")}
@@ -479,7 +479,7 @@ export default function ConsultarReservaPage() {
                     </td>
                     <td className="p-2">
                       <Badge className={getStatusBadgeClasses(row.status)}>
-                        {row.status}
+                        {formatStatusLabel(row.status)}
                       </Badge>
                     </td>
                     <td className="p-2 break-words">

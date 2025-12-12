@@ -90,7 +90,7 @@ export default function ConsultarReservaPage() {
     // Gestor can see everything (or specific filters), regular user only theirs
     if (authUser.usertype !== "gestor") {
       data = data.filter(
-        (r) => String(r.solicitante_id) === String(authUser.id)
+        (r) => String(r.solicitante_nome) === String(authUser.id)
       );
     }
 
@@ -159,7 +159,7 @@ export default function ConsultarReservaPage() {
             case "veiculo":
               return veiculoInfo.toLowerCase().includes(cleanValue);
             case "solicitante":
-              return r.solicitante_id.toLowerCase().includes(cleanValue);
+              return r.solicitante_nome.toLowerCase().includes(cleanValue);
             case "municipio":
               return r.municipio.toLowerCase().includes(cleanValue);
             case "obs":
@@ -171,8 +171,8 @@ export default function ConsultarReservaPage() {
               );
             case "autorizador":
               return (
-                r.autorizador_id &&
-                r.autorizador_id.toLowerCase().includes(cleanValue)
+                r.autorizador_nome &&
+                r.autorizador_nome.toLowerCase().includes(cleanValue)
               );
             case "id":
               return (
@@ -188,15 +188,15 @@ export default function ConsultarReservaPage() {
         }
 
         return (
-          r.solicitante_id.toLowerCase().includes(lowerSearch) ||
+          r.solicitante_nome.toLowerCase().includes(lowerSearch) ||
           r.municipio.toLowerCase().includes(lowerSearch) ||
           motoristaName.toLowerCase().includes(lowerSearch) ||
           veiculoInfo.toLowerCase().includes(lowerSearch) ||
           (r.observacao && r.observacao.toLowerCase().includes(lowerSearch)) ||
           (r.observacao_autorizador &&
             r.observacao_autorizador.toLowerCase().includes(lowerSearch)) ||
-          (r.autorizador_id &&
-            r.autorizador_id.toLowerCase().includes(lowerSearch)) ||
+          (r.autorizador_nome &&
+            r.autorizador_nome.toLowerCase().includes(lowerSearch)) ||
           passageiros.toLowerCase().includes(lowerSearch) ||
           r.paradas.some((p) => p.local.toLowerCase().includes(lowerSearch)) ||
           r.id.toString().includes(lowerSearch.replace("#", "")) ||
@@ -377,7 +377,7 @@ export default function ConsultarReservaPage() {
               <th className="px-2 py-2 w-[220px]">
                 <Button
                   variant="ghost"
-                  onClick={() => requestSort("solicitante_id")}
+                  onClick={() => requestSort("solicitante_nome")}
                   className="px-2 py-1 h-auto w-full justify-start text-left"
                 >
                   Solicitante
@@ -432,7 +432,7 @@ export default function ConsultarReservaPage() {
               <th className="px-2 py-2 w-[140px]">
                 <Button
                   variant="ghost"
-                  onClick={() => requestSort("autorizador_id")}
+                  onClick={() => requestSort("autorizador_nome")}
                   className="px-2 py-1 h-auto w-full justify-start text-left"
                 >
                   Autorizador
@@ -469,7 +469,7 @@ export default function ConsultarReservaPage() {
                     <td className="p-2">
                       {formatDateTime(row.data_criacao, "")}
                     </td>
-                    <td className="p-2 break-words">{row.solicitante_id}</td>
+                    <td className="p-2 break-words">{row.solicitante_nome}</td>
                     <td className="p-2">{row.municipio}</td>
                     <td className="p-2">
                       {formatDateTime(row.data_saida, row.horario_saida)}
@@ -483,7 +483,7 @@ export default function ConsultarReservaPage() {
                       </Badge>
                     </td>
                     <td className="p-2 break-words">
-                      {row.autorizador_id ?? "-"}
+                      {row.autorizador_nome ?? "-"}
                     </td>
                   </tr>
 

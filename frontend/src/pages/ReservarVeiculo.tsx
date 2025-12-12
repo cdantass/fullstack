@@ -44,6 +44,7 @@ import { toast } from "sonner";
 import api from "@/api";
 import { cn } from "@/lib/utils";
 import { useReservas } from "@/context/reserva-context-hook";
+import { useAuth } from "@/context/auth-context";
 
 const formSchema = z
   .object({
@@ -181,6 +182,7 @@ export default function ReservaPage() {
   });
 
   const { addReserva } = useReservas();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchMunicipios = async () => {
@@ -223,7 +225,6 @@ export default function ReservaPage() {
     return true;
   };
 
-
   const buildISOTime = (date: Date, timeStr: string) => {
     if (!timeStr) return new Date().toISOString();
 
@@ -248,7 +249,6 @@ export default function ReservaPage() {
           : "";
       }
 
-
       const paradasTransformed = (values.paradas || []).map((p) => ({
         local: p,
       }));
@@ -265,6 +265,7 @@ export default function ReservaPage() {
       const municipioNumeric = Number(values.municipio);
 
       const payload = {
+        solicitante_nome: user?.name || "Usuário",
         veiculo_designado: "",
         motorista_designado: "",
         data_saida: format(values.dataSaida, "yyyy-MM-dd"),
@@ -277,7 +278,8 @@ export default function ReservaPage() {
         paradas: paradasTransformed,
       };
 
-      // @ts-ignore 
+      console.log("Payload being sent:", payload);
+      // @ts-ignore
       await addReserva(payload);
 
       form.reset({

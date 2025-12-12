@@ -270,7 +270,7 @@ export default function AutorizarPage() {
               status: "indisponivel",
             },
             observacao_autorizador: combineFormData.observacao,
-            autorizador_id: authUser?.name,
+            autorizador_nome: authUser?.name,
             data_autorizacao: now.toISOString(), // Full ISO string
           };
 
@@ -359,7 +359,7 @@ export default function AutorizarPage() {
             observacao_autorizador: obs[id] ?? "",
             motorista_designado: motoristaObj,
             veiculo_designado: veiculoObj,
-            autorizador_id: authUser?.email || authUser?.name,
+            autorizador_nome: authUser?.name,
             data_autorizacao: now.toISOString(),
           };
 
@@ -438,7 +438,7 @@ export default function AutorizarPage() {
             case "veiculo":
               return veiculoInfo.toLowerCase().includes(cleanValue);
             case "solicitante":
-              return r.solicitante_id.toLowerCase().includes(cleanValue);
+              return r.solicitante_nome.toLowerCase().includes(cleanValue);
             // deleted: case "unidade": (field removed)
             case "municipio":
               return r.municipio.toLowerCase().includes(cleanValue);
@@ -451,8 +451,8 @@ export default function AutorizarPage() {
               );
             case "autorizador":
               return (
-                r.autorizador_id &&
-                r.autorizador_id.toLowerCase().includes(cleanValue)
+                r.autorizador_nome &&
+                r.autorizador_nome.toLowerCase().includes(cleanValue)
               );
             default:
               break;
@@ -460,15 +460,15 @@ export default function AutorizarPage() {
         }
 
         return (
-          r.solicitante_id.toLowerCase().includes(lowerSearch) ||
+          r.solicitante_nome.toLowerCase().includes(lowerSearch) ||
           r.municipio.toLowerCase().includes(lowerSearch) ||
           motoristaName.toLowerCase().includes(lowerSearch) ||
           veiculoInfo.toLowerCase().includes(lowerSearch) ||
           (r.observacao && r.observacao.toLowerCase().includes(lowerSearch)) ||
           (r.observacao_autorizador &&
             r.observacao_autorizador.toLowerCase().includes(lowerSearch)) ||
-          (r.autorizador_id &&
-            r.autorizador_id.toLowerCase().includes(lowerSearch)) ||
+          (r.autorizador_nome &&
+            r.autorizador_nome.toLowerCase().includes(lowerSearch)) ||
           hasPassageiro(lowerSearch) ||
           r.paradas.some((p) => p.local.toLowerCase().includes(lowerSearch))
         );
@@ -615,7 +615,7 @@ export default function AutorizarPage() {
                         )}
                       </td>
                       <td className="p-3">
-                        {row.solicitante_id}{" "}
+                        {row.solicitante_nome}{" "}
                         {row.unidade ? `/ ${row.unidade}` : ""}
                       </td>
                       <td className="p-3">{row.municipio}</td>
@@ -1138,7 +1138,9 @@ export default function AutorizarPage() {
                 new Set(
                   sharedReservas.map(
                     (r) =>
-                      `${r.solicitante_id}${r.unidade ? ` / ${r.unidade}` : ""}`
+                      `${r.solicitante_nome}${
+                        r.unidade ? ` / ${r.unidade}` : ""
+                      }`
                   )
                 )
               );

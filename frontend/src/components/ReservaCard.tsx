@@ -164,7 +164,8 @@ export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
                 <span className="font-medium">{statusInfo.label}</span>
               </div>
               <p className="ml-6 text-sm">
-                <strong>Autorizador:</strong> {reserva.autorizador_id ?? "N/A"}
+                <strong>Autorizador:</strong>{" "}
+                {reserva.autorizador_nome ?? "N/A"}
               </p>
               <p className="ml-6 text-sm">
                 <strong>Data:</strong>{" "}

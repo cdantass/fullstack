@@ -11,7 +11,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "./ModeToggle";
-import LogoutButton from "./Logout";
+import LogoutButton from "./logout";
 import { useAuth } from "@/context/auth-context";
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {

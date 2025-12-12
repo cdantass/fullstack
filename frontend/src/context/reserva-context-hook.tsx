@@ -15,7 +15,7 @@ export type Reserva = {
   observacao?: string; // was obsSolicitante
   status: string; // was union type, now string (e.g. "pendente")
   data_criacao: string; // was data_solicitacao
-  autorizador_id?: string; // was autorizador
+  autorizador_nome?: string; // was autorizador_id
   observacao_autorizador?: string; // was obsAdmin
   data_autorizacao?: string;
   motorista_designado?: {

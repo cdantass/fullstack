@@ -59,7 +59,6 @@ class ChamadoSerializer(serializers.ModelSerializer):
     autorizador_nome = serializers.SerializerMethodField()
 
     municipio = serializers.CharField(source='municipio.nome', read_only=True)
-
     motorista_designado = serializers.StringRelatedField(read_only=True)
     veiculo_designado = serializers.StringRelatedField(read_only=True)
     paradas = ParadaSerializer(many=True, read_only=True)
@@ -141,10 +140,10 @@ class ChamadoCreateSerializer(serializers.ModelSerializer):
 
 
 class ChamadoGestorSerializer(serializers.ModelSerializer):
-    solicitante_id = serializers.StringRelatedField(read_only=True)
-    autorizador_id = serializers.StringRelatedField(read_only=True)
-    municipio = serializers.StringRelatedField(read_only=True)
+    solicitante_nome = serializers.SerializerMethodField()
+    autorizador_nome = serializers.SerializerMethodField()
 
+    municipio = serializers.StringRelatedField(read_only=True)
     motorista_designado = MotoristaSerializer(read_only=True)
     veiculo_designado = VeiculoSerializer(read_only=True)
     paradas = ParadaSerializer(many=True, read_only=True)
@@ -172,14 +171,24 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Chamado
         fields = [
-            'id', 'solicitante_id', 'data_saida', 'horario_saida',
+            'id', 'solicitante', 'solicitante_nome', 'data_saida', 'horario_saida',
             'data_retorno', 'horario_retorno', 'passageiro1', 'passageiro2',
             'passageiro3', 'passageiro4', 'municipio', 'observacao', 'status',
-            'data_criacao', 'autorizador_id', 'observacao_autorizador',
+            'data_criacao', 'autorizador', 'autorizador_nome', 'observacao_autorizador',
             'data_autorizacao', 'motorista_designado', 'veiculo_designado',
             'paradas', 'motorista_id', 'veiculo_id'
         ]
-        read_only_fields = ['data_criacao', 'data_autorizacao']
+        read_only_fields = ['solicitante', 'autorizador', 'data_criacao', 'data_autorizacao']
+
+    def get_solicitante_nome(self, obj):
+        if obj.solicitante:
+            return obj.solicitante.username
+        return None
+
+    def get_autorizador_nome(self, obj):
+        if obj.autorizador:
+            return obj.autorizador.username
+        return None
 
 
 class MergeChamadoSerializer(serializers.Serializer):

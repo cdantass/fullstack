@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 
 export type Reserva = {
   id: number;
-  solicitante_id: string; // was solicitante
+  solicitante_nome: string; // was solicitante
   data_saida: string;
   horario_saida: string;
   data_retorno: string;

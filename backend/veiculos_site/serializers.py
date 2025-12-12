@@ -74,16 +74,18 @@ class ChamadoSerializer(serializers.ModelSerializer):
             'autorizador', 'autorizador_nome', 'observacao_autorizador', 'data_autorizacao',
             'paradas'
         ]
+        read_only_fields = ['solicitante', 'autorizador']
 
     def get_solicitante_nome(self, obj):
         if obj.solicitante:
-            return obj.solicitante.get_full_name() or obj.solicitante.username
+            return obj.solicitante.username
         return None
 
     def get_autorizador_nome(self, obj):
         if obj.autorizador:
-            return obj.autorizador.get_full_name() or obj.autorizador.username
+            return obj.autorizador.username
         return None
+
 
 
 class ChamadoCreateSerializer(serializers.ModelSerializer):
@@ -137,6 +139,7 @@ class ChamadoCreateSerializer(serializers.ModelSerializer):
 
         return chamado
 
+
 class ChamadoGestorSerializer(serializers.ModelSerializer):
     solicitante_id = serializers.StringRelatedField(read_only=True)
     autorizador_id = serializers.StringRelatedField(read_only=True)
@@ -177,6 +180,7 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
             'paradas', 'motorista_id', 'veiculo_id'
         ]
         read_only_fields = ['data_criacao', 'data_autorizacao']
+
 
 class MergeChamadoSerializer(serializers.Serializer):
     chamados = serializers.ListField(

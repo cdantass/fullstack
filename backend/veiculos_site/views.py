@@ -58,7 +58,7 @@ class ChamadoViewSet(viewsets.ModelViewSet):
             return Chamado.objects.all().order_by('-data_criacao')
 
         return Chamado.objects.filter(
-            solicitante_id=str(user.id)
+            solicitante=user
         ).order_by('-data_criacao')
 
     def get_serializer_class(self):
@@ -76,13 +76,15 @@ class ChamadoViewSet(viewsets.ModelViewSet):
         return ChamadoSerializer
 
     def perform_create(self, serializer):
-        serializer.save(solicitante_id=str(self.request.user.id))
+        serializer.save(solicitante=self.request.user)
 
     def perform_update(self, serializer):
         serializer.save(
-            autorizador_id=str(self.request.user.id),
+            autorizador=self.request.user,
             data_autorizacao=timezone.now()
         )
+
+
 
 
 class MunicipioListView(generics.ListAPIView):
@@ -164,17 +166,19 @@ class MesclarChamadosView(APIView):
 
         paradas_unicas = list(dict.fromkeys(todas_paradas))
 
+        # Correção: solicitante e autorizador agora são ForeignKey(User)
         novo_chamado = Chamado.objects.create(
-            solicitante_id=str(request.user.id),
+            solicitante=request.user,
             municipio=chamados.first().municipio,
             data_saida=chosen_saida,
             horario_saida=chamados.first().horario_saida,
             data_retorno=chosen_retorno,
             horario_retorno=chamados.first().horario_retorno,
-            autorizador_id=str(request.user.id),
+            autorizador=request.user,
             data_autorizacao=timezone.now(),
             status="pendente"
         )
+
         passageiros_final = todos_passageiros + [None, None, None, None]
         passageiros_final = passageiros_final[:4]
 

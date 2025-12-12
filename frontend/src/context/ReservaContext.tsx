@@ -62,6 +62,24 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const concluirReserva = async (id: number) => {
+    const reserva = reservas.find((r) => r.id === id);
+    if (!reserva) return;
+
+    try {
+      await api.put(`/api/chamados/${id}/`, {
+        ...reserva,
+        status: "concluido",
+      });
+      updateReserva(id, { status: "concluido" });
+      toast.success("Reserva concluída com sucesso.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao concluir reserva.");
+      throw error;
+    }
+  };
+
   return (
     <ReservaContext.Provider
       value={{
@@ -71,6 +89,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
         addReserva,
         updateReserva,
         cancelReserva,
+        concluirReserva,
       }}
     >
       {children}

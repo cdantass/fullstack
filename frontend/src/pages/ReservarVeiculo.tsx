@@ -45,7 +45,6 @@ import api from "@/api";
 import { cn } from "@/lib/utils";
 import { useReservas } from "@/context/reserva-context-hook";
 
-// Zod schema for form-level validation (keeps UI behaviour)
 const formSchema = z
   .object({
     municipio: z.string().min(1, "Selecione um município."),
@@ -224,9 +223,8 @@ export default function ReservaPage() {
     return true;
   };
 
-  // Helper to build ISO time string from date and time inputs
+
   const buildISOTime = (date: Date, timeStr: string) => {
-    // timeStr expected in "HH:mm" (from <input type="time" />)
     if (!timeStr) return new Date().toISOString();
 
     const [hours, minutes] = timeStr.split(":");
@@ -242,7 +240,6 @@ export default function ReservaPage() {
     setLoading(true);
 
     try {
-      // Transform passengers array into explicit passageiro1..4 fields
       const passageiros = values.passageiros || [];
       const passengerFields: Record<string, string> = {};
       for (let i = 0; i < 4; i++) {
@@ -251,12 +248,11 @@ export default function ReservaPage() {
           : "";
       }
 
-      // Transform paradas array into array of objects { local }
+
       const paradasTransformed = (values.paradas || []).map((p) => ({
         local: p,
       }));
 
-      // Build ISO-like horario values
       const horario_saida_iso = buildISOTime(
         values.dataSaida,
         values.horarioSaida
@@ -266,7 +262,6 @@ export default function ReservaPage() {
         values.horarioRetorno
       );
 
-      // Municipio should be numeric according to your confirmation
       const municipioNumeric = Number(values.municipio);
 
       const payload = {
@@ -276,17 +271,15 @@ export default function ReservaPage() {
         horario_saida: values.horarioSaida,
         data_retorno: format(values.dataRetorno, "yyyy-MM-dd"),
         horario_retorno: values.horarioRetorno,
-        // spread passageiro1..4
         ...passengerFields,
         municipio: municipioNumeric,
         observacao: values.observacao || "",
         paradas: paradasTransformed,
       };
 
-      // @ts-ignore - Payload matches backend creation schema but differs from strict frontend Reserva type (e.g. empty strings vs objects)
+      // @ts-ignore 
       await addReserva(payload);
 
-      // reset form and local inputs
       form.reset({
         municipio: "",
         paradas: [],

@@ -6,11 +6,13 @@ import {
   NotebookPen,
   CheckCircle,
   XCircle,
+  Link2,
+  Ban,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { type Reserva } from "@/context/reserva-context-hook";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatStatusLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -43,6 +45,43 @@ const getStatusBadgeClasses = (status: Reserva["status"]) => {
   }
 };
 
+const getStatusInfo = (status: string) => {
+  const statusLower = status.toLowerCase();
+  switch (statusLower) {
+    case "aprovado":
+      return {
+        label: "Aprovado por:",
+        icon: <CheckCircle className="w-4 h-4 text-green-600" />,
+      };
+    case "concluido":
+      return {
+        label: "Concluído por:",
+        icon: <CheckCircle className="w-4 h-4 text-blue-600" />,
+      };
+    case "viagem_compartilhada":
+      return {
+        label: "Combinado por:",
+        icon: <Link2 className="w-4 h-4 text-purple-600" />,
+      };
+    case "cancelado":
+      return {
+        label: "Cancelado por:",
+        icon: <Ban className="w-4 h-4 text-gray-600" />,
+      };
+    case "recusado":
+    case "negado":
+      return {
+        label: "Recusado por:",
+        icon: <XCircle className="w-4 h-4 text-red-600" />,
+      };
+    default:
+      return {
+        label: "Atualizado por:",
+        icon: <CheckCircle className="w-4 h-4 text-muted-foreground" />,
+      };
+  }
+};
+
 export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
   const veiculoNome = reserva.veiculo_designado
     ? `${reserva.veiculo_designado.modelo} - ${reserva.veiculo_designado.placa}`
@@ -58,6 +97,8 @@ export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
     reserva.passageiro3,
     reserva.passageiro4,
   ].filter(Boolean);
+
+  const statusInfo = getStatusInfo(reserva.status);
 
   return (
     <Card key={reserva.id} className="mb-4">
@@ -119,18 +160,8 @@ export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
           {reserva.status.toLowerCase() !== "pendente" && (
             <div className="border-t pt-4 mt-4">
               <div className="flex items-center gap-2 mb-2">
-                {reserva.status.toLowerCase() === "aprovado" ? (
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-red-600" />
-                )}
-                <span className="font-medium">
-                  {reserva.status.toLowerCase() === "aprovado"
-                    ? "Aprovado por:"
-                    : reserva.status.toLowerCase() === "cancelado"
-                    ? "Cancelado por:"
-                    : "Negado por:"}
-                </span>
+                {statusInfo.icon}
+                <span className="font-medium">{statusInfo.label}</span>
               </div>
               <p className="ml-6 text-sm">
                 <strong>Autorizador:</strong> {reserva.autorizador_id ?? "N/A"}
@@ -145,16 +176,21 @@ export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
         <div className="flex items-center gap-2">
           <span className="font-medium">Status:</span>
           <Badge className={cn(getStatusBadgeClasses(reserva.status))}>
-            {reserva.status}
+            {formatStatusLabel(reserva.status)}
           </Badge>
         </div>
 
-        {(reserva.status === "Pendente" || reserva.status === "Aprovado") &&
+        {["pendente", "aprovado"].includes(
+          (reserva.status || "").toLowerCase()
+        ) &&
           onCancel && (
             <div className="md:col-span-2 flex justify-end mt-4 border-t pt-4">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    size="sm"
+                  >
                     Cancelar Reserva
                   </Button>
                 </AlertDialogTrigger>

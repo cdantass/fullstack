@@ -55,31 +55,35 @@ class ParadaSerializer(serializers.ModelSerializer):
         fields = ['local']
 
 class ChamadoSerializer(serializers.ModelSerializer):
-    solicitante_id = serializers.IntegerField(read_only=True)
-    autorizador_id = serializers.IntegerField(read_only=True)
+    solicitante_nome = serializers.SerializerMethodField()
+    autorizador_nome = serializers.SerializerMethodField()
 
     municipio = serializers.CharField(source='municipio.nome', read_only=True)
 
     motorista_designado = serializers.StringRelatedField(read_only=True)
     veiculo_designado = serializers.StringRelatedField(read_only=True)
-
     paradas = ParadaSerializer(many=True, read_only=True)
-
-    passageiro1 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    passageiro2 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    passageiro3 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    passageiro4 = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Chamado
         fields = [
-            'id', 'veiculo_designado', 'solicitante_id', 'motorista_designado',
-            'data_saida', 'horario_saida', 'data_retorno',
+            'id', 'veiculo_designado', 'solicitante', 'solicitante_nome',
+            'motorista_designado', 'data_saida', 'horario_saida', 'data_retorno',
             'horario_retorno', 'passageiro1', 'passageiro2', 'passageiro3',
             'passageiro4', 'municipio', 'observacao', 'status', 'data_criacao',
-            'autorizador_id', 'observacao_autorizador', 'data_autorizacao',
+            'autorizador', 'autorizador_nome', 'observacao_autorizador', 'data_autorizacao',
             'paradas'
         ]
+
+    def get_solicitante_nome(self, obj):
+        if obj.solicitante:
+            return obj.solicitante.get_full_name() or obj.solicitante.username
+        return None
+
+    def get_autorizador_nome(self, obj):
+        if obj.autorizador:
+            return obj.autorizador.get_full_name() or obj.autorizador.username
+        return None
 
 
 class ChamadoCreateSerializer(serializers.ModelSerializer):

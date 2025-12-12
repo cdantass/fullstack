@@ -55,8 +55,21 @@ class Parada(models.Model):
 
 
 class Chamado(models.Model):
-    solicitante_id = models.CharField(max_length=255)
-    autorizador_id = models.CharField(max_length=255, null=True, blank=True)
+    solicitante = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name='chamados_solicitados',
+        null=True,
+        blank=True
+    )
+
+    autorizador = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name='chamados_autorizados',
+        null=True,
+        blank=True
+    )
     motorista_designado = models.ForeignKey('Motorista', on_delete=models.SET_NULL, null=True, blank=True)
     veiculo_designado = models.ForeignKey('Veiculo', on_delete=models.SET_NULL, null=True, blank=True)
 

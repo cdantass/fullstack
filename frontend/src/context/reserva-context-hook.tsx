@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 
 export type Reserva = {
   id: number;
-  solicitante_nome: string; // was solicitante
+  solicitante_nome: string;
   data_saida: string;
   horario_saida: string;
   data_retorno: string;
@@ -12,11 +12,11 @@ export type Reserva = {
   passageiro3?: string;
   passageiro4?: string;
   municipio: string;
-  observacao?: string; // was obsSolicitante
-  status: string; // was union type, now string (e.g. "pendente")
-  data_criacao: string; // was data_solicitacao
-  autorizador_nome?: string; // was autorizador_id
-  observacao_autorizador?: string; // was obsAdmin
+  observacao?: string;
+  status: string;
+  data_criacao: string;
+  autorizador_nome?: string;
+  observacao_autorizador?: string;
   data_autorizacao?: string;
   motorista_designado?: {
     id: number;
@@ -31,13 +31,10 @@ export type Reserva = {
     status: string;
   };
   paradas: { local: string }[];
-
-  // Legacy fields or derived fields might need handling if components rely on them.
-  // For now I will strictly match the schema.
-  // Note: Unidade is missing in new schema. I will remove it or make it optional if not present.
   unidade?: string;
   localidade?: string;
-  viagemCompartilhadaId?: string;
+  viagem_compartilhada?: number | null; // FK to parent chamado
+  chamados_combinados?: Reserva[]; // Child chamados (only on parent)
 };
 
 export type AddReservaPayload = Omit<Reserva, ""> & {

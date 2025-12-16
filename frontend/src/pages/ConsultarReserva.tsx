@@ -40,6 +40,8 @@ const getStatusBadgeClasses = (status: string) => {
       return "bg-blue-100 text-blue-800 hover:bg-blue-200";
     case "viagem_compartilhada":
       return "bg-purple-100 text-purple-800 hover:bg-purple-200";
+    case "combinado":
+      return "bg-indigo-100 text-indigo-800 hover:bg-indigo-200";
     case "cancelado":
       return "bg-gray-100 text-gray-800 hover:bg-gray-200";
     default:
@@ -177,8 +179,8 @@ export default function ConsultarReservaPage() {
             case "id":
               return (
                 r.id.toString().includes(cleanValue.replace("#", "")) ||
-                (r.viagemCompartilhadaId &&
-                  r.viagemCompartilhadaId
+                (r.viagem_compartilhada &&
+                  r.viagem_compartilhada
                     .toString()
                     .includes(cleanValue.replace("#", "")))
               );
@@ -200,8 +202,8 @@ export default function ConsultarReservaPage() {
           passageiros.toLowerCase().includes(lowerSearch) ||
           r.paradas.some((p) => p.local.toLowerCase().includes(lowerSearch)) ||
           r.id.toString().includes(lowerSearch.replace("#", "")) ||
-          (r.viagemCompartilhadaId &&
-            r.viagemCompartilhadaId
+          (r.viagem_compartilhada &&
+            r.viagem_compartilhada
               .toString()
               .includes(lowerSearch.replace("#", "")))
         );
@@ -460,9 +462,9 @@ export default function ConsultarReservaPage() {
                   >
                     <td className="p-2 break-words">
                       <span className="font-mono text-xs">#{row.id}</span>
-                      {row.viagemCompartilhadaId && (
+                      {row.viagem_compartilhada && (
                         <div className="text-[10px] text-muted-foreground">
-                          #{row.viagemCompartilhadaId}
+                          #{row.viagem_compartilhada}
                         </div>
                       )}
                     </td>

@@ -225,18 +225,6 @@ export default function ReservaPage() {
     return true;
   };
 
-  const buildISOTime = (date: Date, timeStr: string) => {
-    if (!timeStr) return new Date().toISOString();
-
-    const [hours, minutes] = timeStr.split(":");
-    const d = new Date(date);
-    d.setHours(Number(hours));
-    d.setMinutes(Number(minutes));
-    d.setSeconds(0);
-    d.setMilliseconds(0);
-    return d.toISOString();
-  };
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
 
@@ -253,21 +241,12 @@ export default function ReservaPage() {
         local: p,
       }));
 
-      const horario_saida_iso = buildISOTime(
-        values.dataSaida,
-        values.horarioSaida
-      );
-      const horario_retorno_iso = buildISOTime(
-        values.dataRetorno,
-        values.horarioRetorno
-      );
-
       const municipioNumeric = Number(values.municipio);
 
       const payload = {
         solicitante_nome: user?.name || "Usuário",
-        veiculo_designado: "",
-        motorista_designado: "",
+        veiculo_designado: null,
+        motorista_designado: null,
         data_saida: format(values.dataSaida, "yyyy-MM-dd"),
         horario_saida: values.horarioSaida,
         data_retorno: format(values.dataRetorno, "yyyy-MM-dd"),

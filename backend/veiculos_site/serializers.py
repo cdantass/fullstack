@@ -71,7 +71,7 @@ class ChamadoSerializer(serializers.ModelSerializer):
             'horario_retorno', 'passageiro1', 'passageiro2', 'passageiro3',
             'passageiro4', 'municipio', 'observacao', 'status', 'data_criacao',
             'autorizador', 'autorizador_nome', 'observacao_autorizador', 'data_autorizacao',
-            'paradas'
+            'paradas', 'viagem_compartilhada'
         ]
         read_only_fields = ['solicitante', 'autorizador']
 
@@ -176,7 +176,7 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
             'passageiro3', 'passageiro4', 'municipio', 'observacao', 'status',
             'data_criacao', 'autorizador', 'autorizador_nome', 'observacao_autorizador',
             'data_autorizacao', 'motorista_designado', 'veiculo_designado',
-            'paradas', 'motorista_id', 'veiculo_id'
+            'paradas', 'motorista_id', 'veiculo_id', 'viagem_compartilhada'
         ]
         read_only_fields = ['solicitante', 'autorizador', 'data_criacao', 'data_autorizacao']
 

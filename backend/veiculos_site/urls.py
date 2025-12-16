@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import MesclarChamadosView
+from .views import CombinarChamadosView
 
 router = DefaultRouter()
 router.register(r'veiculos', views.VeiculoViewSet, basename='veiculo')
@@ -15,5 +15,5 @@ urlpatterns = [
     path('motoristas-disponiveis/', views.MotoristaDisponivelListView.as_view(), name='motorista-disponivel-list'),
     path('veiculos-disponiveis/', views.VeiculoDisponivelListView.as_view(), name='veiculo-disponivel-list'),
     path('meus-chamados/', views.MeusChamadosListView.as_view(), name='meus-chamados-list'),
-    path("chamados/mesclar/", MesclarChamadosView.as_view(), name="mesclar-chamados")
+    path("chamados/combinar/", CombinarChamadosView.as_view(), name="combinar-chamados")
 ]

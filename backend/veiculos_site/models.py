@@ -91,6 +91,7 @@ class Chamado(models.Model):
         ('aprovado', 'Aprovado'),
         ('em_andamento', 'Em Andamento'),
         ('viagem_compartilhada', "Viagem Compartilhada"),
+        ('combinado', 'Combinado'),
         ('concluido', 'Concluído'),
         ('recusado', 'Recusado'),
     ]
@@ -99,6 +100,16 @@ class Chamado(models.Model):
 
     observacao_autorizador = models.TextField(blank=True)
     data_autorizacao = models.DateTimeField(null=True, blank=True)
+
+    # FK to parent chamado for combined trips
+    viagem_compartilhada = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='chamados_combinados',
+        verbose_name="Viagem Compartilhada"
+    )
 
     def clean(self):
         if self.status == 'aprovado' and self.motorista_designado and self.veiculo_designado:

@@ -115,15 +115,33 @@ class MeusChamadosListView(generics.ListAPIView):
         ).order_by('-data_criacao')
 
 
-class MesclarChamadosView(APIView):
+class CombinarChamadosView(APIView):
+    """
+    Combines multiple chamados into a new shared trip (viagem compartilhada).
+    - Creates new parent chamado with status 'viagem_compartilhada'
+    - Marks originals as 'combinado' with FK to the new parent
+    """
     permission_classes = [AllowAny]
 
     def post(self, request):
         ids = request.data.get("chamados", [])
+        motorista_id = request.data.get("motorista_id")
+        veiculo_id = request.data.get("veiculo_id")
+        data_saida = request.data.get("data_saida")
+        horario_saida = request.data.get("horario_saida")
+        data_retorno = request.data.get("data_retorno")
+        horario_retorno = request.data.get("horario_retorno")
+        observacao = request.data.get("observacao", "")
 
         if not ids or len(ids) < 2:
             return Response(
                 {"detail": "Selecione ao menos dois chamados."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not motorista_id or not veiculo_id:
+            return Response(
+                {"detail": "Motorista e veículo são obrigatórios."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -135,61 +153,63 @@ class MesclarChamadosView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Collect all passengers from original chamados
         todos_passageiros = []
-
         for ch in chamados:
-            for p in [
-                ch.passageiro1,
-                ch.passageiro2,
-                ch.passageiro3,
-                ch.passageiro4
-            ]:
-                if p:
+            for p in [ch.passageiro1, ch.passageiro2, ch.passageiro3, ch.passageiro4]:
+                if p and p not in todos_passageiros:
                     todos_passageiros.append(p)
 
-        if len(todos_passageiros) > 4:
-            return Response(
-                {"detail": "A junção ultrapassa o limite de passageiros (4)."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        menor_saida = min(ch.data_saida for ch in chamados)
-        maior_retorno = max(ch.data_retorno for ch in chamados)
-
-        chosen_saida = menor_saida
-        chosen_retorno = maior_retorno
-
+        # Collect unique paradas
         todas_paradas = []
         for ch in chamados:
             for p in ch.paradas.all():
-                todas_paradas.append(p.local)
+                if p.local not in todas_paradas:
+                    todas_paradas.append(p.local)
 
-        paradas_unicas = list(dict.fromkeys(todas_paradas))
+        # Get motorista and veiculo
+        try:
+            motorista = Motorista.objects.get(id=motorista_id)
+            veiculo = Veiculo.objects.get(id=veiculo_id)
+        except (Motorista.DoesNotExist, Veiculo.DoesNotExist):
+            return Response(
+                {"detail": "Motorista ou veículo não encontrado."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Correção: solicitante e autorizador agora são ForeignKey(User)
+        # Pad passengers to 4 slots
+        passageiros_final = (todos_passageiros + ["", "", "", ""])[:4]
+
+        # Create new parent chamado (viagem compartilhada)
         novo_chamado = Chamado.objects.create(
-            solicitante=request.user,
+            solicitante=request.user if request.user.is_authenticated else None,
             municipio=chamados.first().municipio,
-            data_saida=chosen_saida,
-            horario_saida=chamados.first().horario_saida,
-            data_retorno=chosen_retorno,
-            horario_retorno=chamados.first().horario_retorno,
-            autorizador=request.user,
+            data_saida=data_saida,
+            horario_saida=horario_saida,
+            data_retorno=data_retorno,
+            horario_retorno=horario_retorno,
+            passageiro1=passageiros_final[0],
+            passageiro2=passageiros_final[1],
+            passageiro3=passageiros_final[2],
+            passageiro4=passageiros_final[3],
+            motorista_designado=motorista,
+            veiculo_designado=veiculo,
+            autorizador=request.user if request.user.is_authenticated else None,
             data_autorizacao=timezone.now(),
-            status="pendente"
+            observacao_autorizador=observacao,
+            status="viagem_compartilhada"
         )
 
-        passageiros_final = todos_passageiros + [None, None, None, None]
-        passageiros_final = passageiros_final[:4]
-
-        novo_chamado.passageiro1 = passageiros_final[0]
-        novo_chamado.passageiro2 = passageiros_final[1]
-        novo_chamado.passageiro3 = passageiros_final[2]
-        novo_chamado.passageiro4 = passageiros_final[3]
-        novo_chamado.save()
-
-        for local in paradas_unicas:
+        # Create paradas for the new chamado
+        for local in todas_paradas:
             Parada.objects.create(chamado=novo_chamado, local=local)
+
+        # Mark original chamados as 'combinado' and link to parent
+        for ch in chamados:
+            ch.status = "combinado"
+            ch.viagem_compartilhada = novo_chamado
+            ch.save(update_fields=['status', 'viagem_compartilhada'])
 
         serializer = ChamadoGestorSerializer(novo_chamado)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+

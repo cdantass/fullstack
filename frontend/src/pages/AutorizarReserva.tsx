@@ -73,6 +73,8 @@ const getStatusBadgeClasses = (status: string) => {
       return "bg-blue-100 text-blue-800 hover:bg-blue-200";
     case "viagem_compartilhada":
       return "bg-purple-100 text-purple-800 hover:bg-purple-200";
+    case "combinado":
+      return "bg-indigo-100 text-indigo-800 hover:bg-indigo-200";
     case "cancelado":
       return "bg-gray-100 text-gray-800 hover:bg-gray-200";
     default:
@@ -99,7 +101,7 @@ export default function AutorizarPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [selectedReservas, setSelectedReservas] = React.useState<number[]>([]);
   const [isCombineModalOpen, setIsCombineModalOpen] = React.useState(false);
-  const [viewSharedRideId, setViewSharedRideId] = React.useState<string | null>(
+  const [viewSharedRideId, setViewSharedRideId] = React.useState<number | null>(
     null
   );
   const [combineFormData, setCombineFormData] = React.useState({
@@ -225,61 +227,25 @@ export default function AutorizarPage() {
       return;
     }
 
-    // Generate a new sequential ID for the shared ride
-    const maxId = reservas.reduce((max, r) => Math.max(max, r.id), 0);
-    const sharedId = String(maxId + 1); // Or use UUID if backend supports
-
-    const now = new Date();
-    const status = "viagem_compartilhada";
-
     try {
-      await Promise.all(
-        selectedReservas.map(async (id) => {
-          const reserva = reservas.find((r) => r.id === id);
-          if (!reserva) return;
+      // Call the new combine endpoint - backend handles everything
+      const response = await api.post("/api/chamados/combinar/", {
+        chamados: selectedReservas,
+        motorista_id: parseInt(combineFormData.motorista_id, 10),
+        veiculo_id: parseInt(combineFormData.veiculo_id, 10),
+        data_saida: combineFormData.data_saida,
+        horario_saida: combineFormData.horario_saida,
+        data_retorno: combineFormData.data_retorno,
+        horario_retorno: combineFormData.horario_retorno,
+        observacao: combineFormData.observacao,
+      });
 
-          // Distribute passengers back if needed, or keep them empty/same?
-          // For shared ride, usually we might just update the main status and driver.
-          // I will keep existing passengers but update status and driver.
+      // Refresh reservas to get updated data from server
+      await fetchReservas();
 
-          const apiPayload = {
-            ...reserva,
-            viagemCompartilhadaId: sharedId,
-            data_saida: combineFormData.data_saida,
-            horario_saida: combineFormData.horario_saida,
-            data_retorno: combineFormData.data_retorno,
-            horario_retorno: combineFormData.horario_retorno,
-            // We usually don't overwrite passengers on individual requests unless splitting?
-            // But if we are combining, we might want to ensure they all show the same info?
-            // Assuming we just update the ride details:
-            status: status,
-            motorista_designado: {
-              id: parseInt(combineFormData.motorista_id, 10),
-              nome_motorista:
-                motoristaMap[parseInt(combineFormData.motorista_id, 10)] || "",
-              status: "indisponivel", // assuming becomes busy
-            },
-            veiculo_designado: {
-              id: parseInt(combineFormData.veiculo_id, 10),
-              placa: "", // fetch details if needed, but for now just ID is crucial for backend often
-              modelo:
-                veiculoMap[parseInt(combineFormData.veiculo_id, 10)]?.split(
-                  " - "
-                )[0] || "",
-              ano: 0,
-              status: "indisponivel",
-            },
-            observacao_autorizador: combineFormData.observacao,
-            autorizador_nome: authUser?.name,
-            data_autorizacao: now.toISOString(), // Full ISO string
-          };
-
-          await api.put(`/api/chamados/${id}/`, apiPayload);
-
-          updateReserva(id, apiPayload as Partial<Reserva>);
-        })
+      toast.success(
+        `Viagens combinadas com sucesso! Nova viagem compartilhada #${response.data.id} criada.`
       );
-      toast.success("Viagens combinadas e atualizadas com sucesso!");
       setSelectedReservas([]);
       setIsCombineModalOpen(false);
     } catch (error) {
@@ -307,10 +273,10 @@ export default function AutorizarPage() {
 
     let idsToUpdate = [id];
 
-    if (reservaOriginal.viagemCompartilhadaId && status === "aprovado") {
+    if (reservaOriginal.viagem_compartilhada && status === "aprovado") {
       const linkedReservas = reservas.filter(
         (r) =>
-          r.viagemCompartilhadaId === reservaOriginal.viagemCompartilhadaId &&
+          r.viagem_compartilhada === reservaOriginal.viagem_compartilhada &&
           r.status.toLowerCase() === "pendente"
       );
 
@@ -341,30 +307,42 @@ export default function AutorizarPage() {
                 }
               : undefined;
 
+          const veiculoIdNum = parseInt(veiculoId, 10);
+          const veiculoInfo = veiculoMap[veiculoIdNum] || "";
+          const [veiculoModelo, veiculoPlaca] = veiculoInfo.split(" - ");
           const veiculoObj =
             status === "aprovado"
               ? {
-                  id: parseInt(veiculoId, 10),
-                  placa: "",
-                  modelo:
-                    veiculoMap[parseInt(veiculoId, 10)]?.split(" - ")[0] || "",
+                  id: veiculoIdNum,
+                  placa: veiculoPlaca || "",
+                  modelo: veiculoModelo || "",
                   ano: 0,
                   status: "indisponivel",
                 }
               : undefined;
 
+          // Send just the IDs to the API
           const apiPayload = {
             ...targetReserva,
             status: status, // "aprovado" or "recusado"
             observacao_autorizador: obs[id] ?? "",
-            motorista_designado: motoristaObj,
-            veiculo_designado: veiculoObj,
+            motorista_designado:
+              status === "aprovado" ? parseInt(motoristaId, 10) : null,
+            veiculo_designado:
+              status === "aprovado" ? parseInt(veiculoId, 10) : null,
             autorizador_nome: authUser?.name,
             data_autorizacao: now.toISOString(),
           };
 
           await api.put(`/api/chamados/${targetId}/`, apiPayload);
-          updateReserva(targetId, apiPayload as Partial<Reserva>);
+
+          // Update local state with full objects for immediate UI display
+          const localUpdate = {
+            ...apiPayload,
+            motorista_designado: motoristaObj,
+            veiculo_designado: veiculoObj,
+          };
+          updateReserva(targetId, localUpdate as Partial<Reserva>);
           setObs((s) => ({ ...s, [targetId]: "" }));
         })
       );
@@ -602,9 +580,9 @@ export default function AutorizarPage() {
                       </td>
                       <td className="p-3 whitespace-nowrap">
                         <span className="font-mono text-xs">#{row.id}</span>
-                        {row.viagemCompartilhadaId && (
+                        {row.viagem_compartilhada && (
                           <div className="text-[10px] text-muted-foreground">
-                            #{row.viagemCompartilhadaId}
+                            #{row.viagem_compartilhada}
                           </div>
                         )}
                       </td>
@@ -648,7 +626,7 @@ export default function AutorizarPage() {
                               </TooltipContent>
                             </Tooltip>
                           )}
-                          {row.viagemCompartilhadaId && (
+                          {row.viagem_compartilhada && (
                             <Tooltip delayDuration={500}>
                               <TooltipTrigger asChild>
                                 <Link
@@ -656,7 +634,7 @@ export default function AutorizarPage() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setViewSharedRideId(
-                                      row.viagemCompartilhadaId!
+                                      row.viagem_compartilhada!
                                     );
                                   }}
                                 />
@@ -1129,7 +1107,7 @@ export default function AutorizarPage() {
           {viewSharedRideId &&
             (() => {
               const sharedReservas = reservas.filter(
-                (r) => r.viagemCompartilhadaId === viewSharedRideId
+                (r) => r.viagem_compartilhada === viewSharedRideId
               );
               const first = sharedReservas[0];
               if (!first) return null;

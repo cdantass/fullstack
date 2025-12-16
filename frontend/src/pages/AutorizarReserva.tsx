@@ -44,7 +44,17 @@ import api from "@/api";
 import { formatDateTime, formatStatusLabel } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
 
-import { CheckCircle, Link, PlusCircleIcon, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  Link,
+  MapPin,
+  PlusCircleIcon,
+  Users,
+  X,
+} from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Motorista {
@@ -101,9 +111,8 @@ export default function AutorizarPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [selectedReservas, setSelectedReservas] = React.useState<number[]>([]);
   const [isCombineModalOpen, setIsCombineModalOpen] = React.useState(false);
-  const [viewSharedRideId, setViewSharedRideId] = React.useState<number | null>(
-    null
-  );
+  // Separate state for child row expansion (independent from parent)
+  const [expandedChild, setExpandedChild] = React.useState<number | null>(null);
   const [combineFormData, setCombineFormData] = React.useState({
     data_saida: "",
     horario_saida: "",
@@ -178,7 +187,6 @@ export default function AutorizarPage() {
     if (selectedReservas.length < 2) return;
 
     const selected = reservas.filter((r) => selectedReservas.includes(r.id));
-    const firstReserva = selected[0];
 
     // Aggregate unique stops and passengers
     const allParadas = Array.from(
@@ -197,19 +205,34 @@ export default function AutorizarPage() {
       )
     ).filter(Boolean) as string[];
 
-    if (firstReserva) {
-      setCombineFormData({
-        data_saida: firstReserva.data_saida,
-        horario_saida: firstReserva.horario_saida,
-        data_retorno: firstReserva.data_retorno,
-        horario_retorno: firstReserva.horario_retorno,
-        paradas: allParadas.map((p) => p.local), // keeping internal state as strings for inputs
-        passageiros: allPassageiros,
-        motorista_id: "",
-        veiculo_id: "",
-        observacao: "",
-      });
-    }
+    // Calculate earliest departure and latest return
+    const sortedByDeparture = [...selected].sort((a, b) => {
+      const dateA = new Date(`${a.data_saida}T${a.horario_saida}`);
+      const dateB = new Date(`${b.data_saida}T${b.horario_saida}`);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    const sortedByReturn = [...selected].sort((a, b) => {
+      const dateA = new Date(`${a.data_retorno}T${a.horario_retorno}`);
+      const dateB = new Date(`${b.data_retorno}T${b.horario_retorno}`);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    const earliest = sortedByDeparture[0];
+    const latest = sortedByReturn[0];
+
+    setCombineFormData({
+      data_saida: earliest?.data_saida || "",
+      horario_saida: earliest?.horario_saida || "",
+      data_retorno: latest?.data_retorno || "",
+      horario_retorno: latest?.horario_retorno || "",
+      paradas: allParadas.map((p) => p.local),
+      passageiros: allPassageiros,
+      motorista_id: "",
+      veiculo_id: "",
+      observacao: "",
+    });
+
     setIsCombineModalOpen(true);
   };
 
@@ -228,7 +251,6 @@ export default function AutorizarPage() {
     }
 
     try {
-      // Call the new combine endpoint - backend handles everything
       const response = await api.post("/api/chamados/combinar/", {
         chamados: selectedReservas,
         motorista_id: parseInt(combineFormData.motorista_id, 10),
@@ -383,8 +405,10 @@ export default function AutorizarPage() {
     let data = [...reservas];
 
     if (filter) {
+      // Normalize filter: "Viagem Compartilhada" -> "viagem_compartilhada"
+      const normalizedFilter = filter.toLowerCase().replace(/\s+/g, "_");
       data = data.filter(
-        (r) => (r.status || "").toLowerCase() === filter.toLowerCase()
+        (r) => (r.status || "").toLowerCase() === normalizedFilter
       );
     }
 
@@ -416,10 +440,11 @@ export default function AutorizarPage() {
             case "veiculo":
               return veiculoInfo.toLowerCase().includes(cleanValue);
             case "solicitante":
-              return r.solicitante_nome.toLowerCase().includes(cleanValue);
-            // deleted: case "unidade": (field removed)
+              return (r.solicitante_nome || "")
+                .toLowerCase()
+                .includes(cleanValue);
             case "municipio":
-              return r.municipio.toLowerCase().includes(cleanValue);
+              return (r.municipio || "").toLowerCase().includes(cleanValue);
             case "obs":
               return (
                 (r.observacao &&
@@ -432,14 +457,21 @@ export default function AutorizarPage() {
                 r.autorizador_nome &&
                 r.autorizador_nome.toLowerCase().includes(cleanValue)
               );
+            case "id":
+              return r.id.toString().includes(cleanValue.replace("#", ""));
             default:
               break;
           }
         }
 
+        // Check if searching by ID directly (e.g. #123 or just 123)
+        const idSearch = lowerSearch.replace("#", "");
+        const isIdSearch = /^\d+$/.test(idSearch);
+
         return (
-          r.solicitante_nome.toLowerCase().includes(lowerSearch) ||
-          r.municipio.toLowerCase().includes(lowerSearch) ||
+          (isIdSearch && r.id.toString().includes(idSearch)) ||
+          (r.solicitante_nome || "").toLowerCase().includes(lowerSearch) ||
+          (r.municipio || "").toLowerCase().includes(lowerSearch) ||
           motoristaName.toLowerCase().includes(lowerSearch) ||
           veiculoInfo.toLowerCase().includes(lowerSearch) ||
           (r.observacao && r.observacao.toLowerCase().includes(lowerSearch)) ||
@@ -448,7 +480,10 @@ export default function AutorizarPage() {
           (r.autorizador_nome &&
             r.autorizador_nome.toLowerCase().includes(lowerSearch)) ||
           hasPassageiro(lowerSearch) ||
-          r.paradas.some((p) => p.local.toLowerCase().includes(lowerSearch))
+          (r.paradas &&
+            r.paradas.some(
+              (p) => p.local && p.local.toLowerCase().includes(lowerSearch)
+            ))
         );
       });
     }
@@ -463,10 +498,9 @@ export default function AutorizarPage() {
     "Todos",
     "Pendente",
     "Aprovado",
-    "Negado",
-    "Negado",
+    "Recusado",
     "Concluido",
-    "viagem_compartilhada",
+    "Viagem Compartilhada",
   ];
 
   return (
@@ -476,7 +510,7 @@ export default function AutorizarPage() {
           value={filter || "Todos"}
           onValueChange={(value) => setFilter(value === "Todos" ? null : value)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -552,267 +586,302 @@ export default function AutorizarPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredReservas.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center p-4">
-                    Nenhuma reserva encontrada.
-                  </td>
-                </tr>
-              ) : (
-                filteredReservas.map((row: Reserva) => (
-                  <React.Fragment key={row.id}>
-                    <tr
-                      className="border-t cursor-pointer hover:bg-muted/20"
-                      onClick={() =>
-                        setExpanded(expanded === row.id ? null : row.id)
-                      }
-                    >
-                      <td
-                        className="p-3 whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()}
+              {(() => {
+                // Filter out 'combinado' rows - they'll show as children of parent
+                const mainRows = filteredReservas.filter(
+                  (r) => (r.status || "").toLowerCase() !== "combinado"
+                );
+
+                if (mainRows.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={8} className="text-center p-4">
+                        Nenhuma reserva encontrada.
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return mainRows.map((row: Reserva, index: number) => {
+                  const isViagemCompartilhada =
+                    (row.status || "").toLowerCase() === "viagem_compartilhada";
+                  const childRows = isViagemCompartilhada
+                    ? reservas.filter((r) => r.viagem_compartilhada === row.id)
+                    : [];
+                  const hasChildren = childRows.length > 0;
+                  const isExpanded = expanded === row.id;
+                  const isEvenRow = index % 2 === 0;
+
+                  return (
+                    <React.Fragment key={row.id}>
+                      <tr
+                        className={`border-t cursor-pointer hover:bg-muted/40 ${
+                          isEvenRow ? "bg-muted/50" : ""
+                        }`}
+                        onClick={() =>
+                          setExpanded(expanded === row.id ? null : row.id)
+                        }
                       >
-                        {(row.status || "").toLowerCase() === "pendente" && (
-                          <Checkbox
-                            checked={selectedReservas.includes(row.id)}
-                            onCheckedChange={() => handleSelectReserva(row.id)}
-                          />
-                        )}
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        <span className="font-mono text-xs">#{row.id}</span>
-                        {row.viagem_compartilhada && (
-                          <div className="text-[10px] text-muted-foreground">
-                            #{row.viagem_compartilhada}
+                        <td
+                          className="p-3 whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center gap-2">
+                            {hasChildren ? (
+                              isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              )
+                            ) : (
+                              <span className="w-4" />
+                            )}
+                            {(row.status || "").toLowerCase() ===
+                              "pendente" && (
+                              <Checkbox
+                                checked={selectedReservas.includes(row.id)}
+                                onCheckedChange={() =>
+                                  handleSelectReserva(row.id)
+                                }
+                              />
+                            )}
                           </div>
-                        )}
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {formatDateTime(
-                          row.data_criacao,
-                          "" // Time included in ISO
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {row.solicitante_nome}{" "}
-                        {row.unidade ? `/ ${row.unidade}` : ""}
-                      </td>
-                      <td className="p-3">{row.municipio}</td>
-                      <td className="p-3 whitespace-nowrap">
-                        {formatDateTime(row.data_saida, row.horario_saida)}
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {formatDateTime(row.data_retorno, row.horario_retorno)}
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <span className="font-mono text-xs">#{row.id}</span>
+                          {hasChildren && (
+                            <span className="ml-1 text-[10px] text-purple-600">
+                              ({childRows.length})
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {formatDateTime(
+                            row.data_criacao,
+                            "" // Time included in ISO
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {row.solicitante_nome}{" "}
+                          {row.unidade ? `/ ${row.unidade}` : ""}
+                        </td>
+                        <td className="p-3">{row.municipio}</td>
+                        <td className="p-3 whitespace-nowrap">
+                          {formatDateTime(row.data_saida, row.horario_saida)}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {formatDateTime(
+                            row.data_retorno,
+                            row.horario_retorno
+                          )}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
                           <Badge className={getStatusBadgeClasses(row.status)}>
                             {formatStatusLabel(row.status)}
                           </Badge>
-                          {["aprovado", "viagem compartilhada"].includes(
-                            (row.status || "").toLowerCase()
-                          ) && (
-                            <Tooltip delayDuration={300}>
-                              <TooltipTrigger asChild>
-                                <CheckCircle
-                                  className="h-4 w-4 text-blue-600 cursor-pointer hover:text-blue-800"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleConclude(row.id);
-                                  }}
-                                />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Concluir Reserva</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                          {row.viagem_compartilhada && (
-                            <Tooltip delayDuration={500}>
-                              <TooltipTrigger asChild>
-                                <Link
-                                  className="h-4 w-4 text-blue-500 cursor-pointer hover:text-blue-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setViewSharedRideId(
-                                      row.viagem_compartilhada!
-                                    );
-                                  }}
-                                />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                Viagem Compartilhada
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                          {row.status === "Aprovado" && (
-                            <AlertDialog>
-                              <Tooltip delayDuration={500}>
-                                <TooltipTrigger asChild>
-                                  <AlertDialogTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <CheckCircle size={16} />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Concluir Solicitação</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              <AlertDialogContent
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Concluir Solicitação?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Tem certeza que deseja concluir esta
-                                    solicitação? Esta ação não pode ser
-                                    desfeita.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>
-                                    Cancelar
-                                  </AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() =>
-                                      handleConcludeReserva(row.id)
-                                    }
-                                    className="bg-blue-600 hover:bg-blue-700"
-                                  >
-                                    Confirmar
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                    {expanded === row.id && (
-                      <tr>
-                        <td colSpan={8} className="p-4 bg-muted/30">
-                          <ReservaCard reserva={row} />
-                          {row.status.toLowerCase() === "pendente" && (
-                            <div className="border-t pt-4 mt-4 space-y-4">
-                              <div>
-                                <label className="text-sm font-medium block mb-1">
-                                  Observação do aprovador
-                                </label>
-                                <Textarea
-                                  className="bg-white"
-                                  placeholder="Escreva sua observação..."
-                                  value={obs[row.id] ?? ""}
-                                  onChange={(e) =>
-                                    setObs((s) => ({
-                                      ...s,
-                                      [row.id]: e.target.value,
-                                    }))
-                                  }
-                                />
-                              </div>
-                              <div className="grid sm:grid-cols-2 gap-4">
-                                <div>
-                                  <label className="text-sm font-medium block mb-1">
-                                    Escolher Motorista
-                                  </label>
-                                  <Select
-                                    value={
-                                      selectedMotoristas[row.id] ??
-                                      (row.motorista_designado
-                                        ? String(row.motorista_designado.id)
-                                        : "")
-                                    }
-                                    onValueChange={(value) =>
-                                      setSelectedMotoristas((prev) => ({
-                                        ...prev,
-                                        [row.id]: value,
-                                      }))
-                                    }
-                                  >
-                                    <SelectTrigger className="w-full">
-                                      <SelectValue placeholder="Selecione um motorista" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {motoristas.map((m) => (
-                                        <SelectItem
-                                          key={m.id}
-                                          value={String(m.id)}
-                                          disabled={m.status !== "disponivel"}
-                                        >
-                                          {m.nome_motorista}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium block mb-1">
-                                    Escolher Veículo
-                                  </label>
-                                  <Select
-                                    value={
-                                      selectedVeiculos[row.id] ??
-                                      (row.veiculo_designado
-                                        ? String(row.veiculo_designado.id)
-                                        : "")
-                                    }
-                                    onValueChange={(value) =>
-                                      setSelectedVeiculos((prev) => ({
-                                        ...prev,
-                                        [row.id]: value,
-                                      }))
-                                    }
-                                  >
-                                    <SelectTrigger className="w-full">
-                                      <SelectValue placeholder="Selecione um veículo" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {veiculos.map((v) => (
-                                        <SelectItem
-                                          key={v.id}
-                                          value={String(v.id)}
-                                          disabled={v.status !== "disponivel"}
-                                        >
-                                          #{v.id} - {v.modelo} - {v.placa}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() =>
-                                    handleUpdateReserva(row.id, "aprovado")
-                                  }
-                                  className="bg-green-600 hover:bg-green-700 text-white"
-                                >
-                                  Aprovar
-                                </Button>
-                                <Button
-                                  onClick={() =>
-                                    handleUpdateReserva(row.id, "recusado")
-                                  }
-                                  className="bg-red-600 hover:bg-red-700 text-white"
-                                >
-                                  Recusar
-                                </Button>
-                              </div>
-                            </div>
-                          )}
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                ))
-              )}
+
+                      {/* Nested Children Rows (for viagem_compartilhada) - shown right after parent row */}
+                      {hasChildren &&
+                        childRows.map((child) => (
+                          <React.Fragment key={`child-${child.id}`}>
+                            <tr
+                              className="bg-muted/15 border-t border-dashed cursor-pointer hover:bg-muted/25"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedChild(
+                                  expandedChild === child.id ? null : child.id
+                                );
+                              }}
+                            >
+                              <td className="p-3 pl-8 whitespace-nowrap">
+                                <span className="text-muted-foreground">└</span>
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  #{child.id}
+                                </span>
+                              </td>
+                              <td className="p-3 whitespace-nowrap text-muted-foreground text-sm">
+                                {formatDateTime(child.data_criacao, "")}
+                              </td>
+                              <td className="p-3 text-muted-foreground text-sm">
+                                {child.solicitante_nome}
+                              </td>
+                              <td className="p-3 text-muted-foreground text-sm">
+                                {child.municipio}
+                              </td>
+                              <td className="p-3 whitespace-nowrap text-muted-foreground text-sm">
+                                {formatDateTime(
+                                  child.data_saida,
+                                  child.horario_saida
+                                )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap text-muted-foreground text-sm">
+                                {formatDateTime(
+                                  child.data_retorno,
+                                  child.horario_retorno
+                                )}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <Badge
+                                  className={getStatusBadgeClasses(
+                                    child.status
+                                  )}
+                                >
+                                  {formatStatusLabel(child.status)}
+                                </Badge>
+                              </td>
+                            </tr>
+                            {/* Expanded detail for child */}
+                            {expandedChild === child.id && (
+                              <tr>
+                                <td
+                                  colSpan={8}
+                                  className="p-4 bg-muted/20 pl-10"
+                                >
+                                  <ReservaCard reserva={child} />
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))}
+
+                      {/* Expanded Detail Panel for parent row */}
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={8} className="p-4 bg-muted/30">
+                            <ReservaCard reserva={row} />
+                            {row.status.toLowerCase() === "pendente" && (
+                              <div className="border-t pt-4 mt-4 space-y-4">
+                                <div>
+                                  <label className="text-sm font-medium block mb-1">
+                                    Observação do aprovador
+                                  </label>
+                                  <Textarea
+                                    className="bg-white"
+                                    placeholder="Escreva sua observação..."
+                                    value={obs[row.id] ?? ""}
+                                    onChange={(e) =>
+                                      setObs((s) => ({
+                                        ...s,
+                                        [row.id]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-sm font-medium block mb-1">
+                                      Escolher Motorista
+                                    </label>
+                                    <Select
+                                      value={
+                                        selectedMotoristas[row.id] ??
+                                        (row.motorista_designado
+                                          ? String(row.motorista_designado.id)
+                                          : "")
+                                      }
+                                      onValueChange={(value) =>
+                                        setSelectedMotoristas((prev) => ({
+                                          ...prev,
+                                          [row.id]: value,
+                                        }))
+                                      }
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Selecione um motorista" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {motoristas.map((m) => (
+                                          <SelectItem
+                                            key={m.id}
+                                            value={String(m.id)}
+                                            disabled={m.status !== "disponivel"}
+                                          >
+                                            {m.nome_motorista}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <label className="text-sm font-medium block mb-1">
+                                      Escolher Veículo
+                                    </label>
+                                    <Select
+                                      value={
+                                        selectedVeiculos[row.id] ??
+                                        (row.veiculo_designado
+                                          ? String(row.veiculo_designado.id)
+                                          : "")
+                                      }
+                                      onValueChange={(value) =>
+                                        setSelectedVeiculos((prev) => ({
+                                          ...prev,
+                                          [row.id]: value,
+                                        }))
+                                      }
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Selecione um veículo" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {veiculos.map((v) => (
+                                          <SelectItem
+                                            key={v.id}
+                                            value={String(v.id)}
+                                            disabled={v.status !== "disponivel"}
+                                          >
+                                            #{v.id} - {v.modelo} - {v.placa}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() =>
+                                      handleUpdateReserva(row.id, "aprovado")
+                                    }
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                  >
+                                    Aprovar
+                                  </Button>
+                                  <Button
+                                    onClick={() =>
+                                      handleUpdateReserva(row.id, "recusado")
+                                    }
+                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                  >
+                                    Recusar
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            {/* Concluir button for aprovado/viagem_compartilhada */}
+                            {["aprovado", "viagem_compartilhada"].includes(
+                              (row.status || "").toLowerCase()
+                            ) && (
+                              <div className="border-t pt-4 mt-4">
+                                <Button
+                                  onClick={() => handleConclude(row.id)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Concluir Viagem
+                                </Button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>
@@ -823,10 +892,122 @@ export default function AutorizarPage() {
           <DialogHeader>
             <DialogTitle>Combinar Viagens</DialogTitle>
             <DialogDescription>
-              Defina os detalhes da viagem compartilhada. As informações abaixo
-              serão aplicadas a todas as reservas selecionadas.
+              Criando viagem compartilhada a partir das solicitações
+              selecionadas.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Side-by-side comparison of selected chamados */}
+          {(() => {
+            const selectedChamados = reservas.filter((r) =>
+              selectedReservas.includes(r.id)
+            );
+            const totalPassengers = combineFormData.passageiros.length;
+            const hasPassengerWarning = totalPassengers > 4;
+
+            return (
+              <div className="space-y-4">
+                {/* Passenger count warning */}
+                {hasPassengerWarning && (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800">
+                    <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                    <span className="text-sm">
+                      <strong>Atenção:</strong> O total de passageiros (
+                      {totalPassengers}) excede o limite de 4. Apenas os 4
+                      primeiros serão incluídos.
+                    </span>
+                  </div>
+                )}
+
+                {/* Summary stats */}
+                <div className="flex flex-wrap gap-4 p-3 bg-muted/50 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      <strong>{totalPassengers}</strong> passageiros
+                      {hasPassengerWarning && (
+                        <span className="text-amber-600 ml-1">(máx: 4)</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      <strong>{combineFormData.paradas.length}</strong> paradas
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      <strong>{selectedChamados.length}</strong> chamados
+                    </span>
+                  </div>
+                </div>
+
+                {/* Side-by-side comparison cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {selectedChamados.map((chamado) => {
+                    const passengers = [
+                      chamado.passageiro1,
+                      chamado.passageiro2,
+                      chamado.passageiro3,
+                      chamado.passageiro4,
+                    ].filter(Boolean);
+
+                    return (
+                      <div
+                        key={chamado.id}
+                        className="border rounded-lg p-3 bg-background space-y-2"
+                      >
+                        <div className="flex justify-between items-start">
+                          <span className="font-mono text-sm font-semibold">
+                            #{chamado.id}
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {formatStatusLabel(chamado.status)}
+                          </Badge>
+                        </div>
+                        <div className="text-sm space-y-1">
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            <span className="truncate">
+                              {chamado.solicitante_nome}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            <span className="truncate">
+                              {chamado.municipio}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Saída:{" "}
+                            {formatDateTime(
+                              chamado.data_saida,
+                              chamado.horario_saida
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Retorno:{" "}
+                            {formatDateTime(
+                              chamado.data_retorno,
+                              chamado.horario_retorno
+                            )}
+                          </div>
+                          {passengers.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              Passageiros: {passengers.length}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -1091,150 +1272,6 @@ export default function AutorizarPage() {
             </Button>
             <Button onClick={handleConfirmCombine}>Confirmar</Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={!!viewSharedRideId}
-        onOpenChange={(open) => !open && setViewSharedRideId(null)}
-      >
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Detalhes da Viagem Compartilhada</DialogTitle>
-            <DialogDescription>
-              Informações unificadas da viagem #{viewSharedRideId}
-            </DialogDescription>
-          </DialogHeader>
-          {viewSharedRideId &&
-            (() => {
-              const sharedReservas = reservas.filter(
-                (r) => r.viagem_compartilhada === viewSharedRideId
-              );
-              const first = sharedReservas[0];
-              if (!first) return null;
-
-              const solicitantes = Array.from(
-                new Set(
-                  sharedReservas.map(
-                    (r) =>
-                      `${r.solicitante_nome}${
-                        r.unidade ? ` / ${r.unidade}` : ""
-                      }`
-                  )
-                )
-              );
-              const passageiros = Array.from(
-                new Set(
-                  sharedReservas.flatMap((r) =>
-                    [
-                      r.passageiro1,
-                      r.passageiro2,
-                      r.passageiro3,
-                      r.passageiro4,
-                    ].filter(Boolean)
-                  )
-                )
-              ).filter(Boolean) as string[];
-
-              const paradas = Array.from(
-                new Set(
-                  sharedReservas.flatMap((r) => r.paradas.map((p) => p.local))
-                )
-              ).filter(Boolean);
-
-              return (
-                <div className="grid gap-6 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Data/Hora Saída
-                      </h4>
-                      <p className="font-medium">
-                        {formatDateTime(first.data_saida, first.horario_saida)}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Data/Hora Retorno
-                      </h4>
-                      <p className="font-medium">
-                        {formatDateTime(
-                          first.data_retorno,
-                          first.horario_retorno
-                        )}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Motorista
-                      </h4>
-                      <p className="font-medium">
-                        {first.motorista_designado
-                          ? first.motorista_designado.nome_motorista
-                          : "-"}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Veículo
-                      </h4>
-                      <p className="font-medium">
-                        {first.veiculo_designado
-                          ? `${first.veiculo_designado.modelo} - ${first.veiculo_designado.placa}`
-                          : "-"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">
-                      Solicitantes
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {solicitantes.map((s, i) => (
-                        <Badge key={i} variant="secondary">
-                          {s}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">
-                      Passageiros ({passageiros.length})
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {passageiros.map((p, i) => (
-                        <Badge key={i} variant="outline">
-                          {p}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">
-                      Paradas
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {paradas.map((p, i) => (
-                        <Badge key={i} variant="outline" className="bg-muted">
-                          {p}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  {first.observacao_autorizador && (
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Observações do Administrador
-                      </h4>
-                      <p className="text-sm">{first.observacao_autorizador}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
         </DialogContent>
       </Dialog>
     </div>

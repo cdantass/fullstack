@@ -6,7 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, ChevronDown, ChevronRight } from "lucide-react";
 import { formatDateTime, formatStatusLabel } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
 
@@ -53,6 +53,7 @@ export default function ConsultarReservaPage() {
   const { reservas, fetchReservas, cancelReserva } = useReservas();
   const { user: authUser } = useAuth();
   const [expanded, setExpanded] = React.useState<number | null>(null);
+  const [expandedChild, setExpandedChild] = React.useState<number | null>(null);
   const [filter, setFilter] = React.useState<string | null>(null);
   const [startDate, setStartDate] = React.useState<string>("");
   const [endDate, setEndDate] = React.useState<string>("");
@@ -125,9 +126,9 @@ export default function ConsultarReservaPage() {
 
     // Status filtering
     if (filter) {
-      data = data.filter(
-        (r) => r.status.toLowerCase() === filter.toLowerCase()
-      );
+      // Normalize filter: "Viagem Compartilhada" -> "viagem_compartilhada"
+      const normalizedFilter = filter.toLowerCase().replace(/\s+/g, "_");
+      data = data.filter((r) => r.status.toLowerCase() === normalizedFilter);
     }
 
     // Search term filtering
@@ -248,10 +249,10 @@ export default function ConsultarReservaPage() {
     "Todos",
     "Pendente",
     "Aprovado",
-    "Recusado", // Changed from Negado
+    "Recusado",
     "Cancelado",
     "Concluido",
-    "viagem_compartilhada",
+    "Viagem Compartilhada",
   ];
 
   return (
@@ -265,7 +266,7 @@ export default function ConsultarReservaPage() {
               setFilter(value === "Todos" ? null : value)
             }
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -445,65 +446,164 @@ export default function ConsultarReservaPage() {
           </thead>
 
           <tbody>
-            {pageData.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center p-4">
-                  Nenhuma reserva encontrada.
-                </td>
-              </tr>
-            ) : (
-              pageData.map((row) => (
-                <React.Fragment key={row.id}>
-                  <tr
-                    className="border-t cursor-pointer hover:bg-muted/20"
-                    onClick={() =>
-                      setExpanded(expanded === row.id ? null : row.id)
-                    }
-                  >
-                    <td className="p-2 break-words">
-                      <span className="font-mono text-xs">#{row.id}</span>
-                      {row.viagem_compartilhada && (
-                        <div className="text-[10px] text-muted-foreground">
-                          #{row.viagem_compartilhada}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-2">
-                      {formatDateTime(row.data_criacao, "")}
-                    </td>
-                    <td className="p-2 break-words">{row.solicitante_nome}</td>
-                    <td className="p-2">{row.municipio}</td>
-                    <td className="p-2">
-                      {formatDateTime(row.data_saida, row.horario_saida)}
-                    </td>
-                    <td className="p-2">
-                      {formatDateTime(row.data_retorno, row.horario_retorno)}
-                    </td>
-                    <td className="p-2">
-                      <Badge className={getStatusBadgeClasses(row.status)}>
-                        {formatStatusLabel(row.status)}
-                      </Badge>
-                    </td>
-                    <td className="p-2 break-words">
-                      {row.autorizador_nome ?? "-"}
+            {(() => {
+              // Filter out 'combinado' rows - they'll show as children of parent
+              const mainRows = pageData.filter(
+                (r) => (r.status || "").toLowerCase() !== "combinado"
+              );
+
+              if (mainRows.length === 0) {
+                return (
+                  <tr>
+                    <td colSpan={8} className="text-center p-4">
+                      Nenhuma reserva encontrada.
                     </td>
                   </tr>
+                );
+              }
 
-                  {expanded === row.id && (
-                    <tr>
-                      <td colSpan={8} className="p-4 bg-muted/30">
-                        <ReservaCard
-                          reserva={row}
-                          onCancel={(id) =>
-                            cancelReserva(id, authUser?.name || "Usuário")
-                          }
-                        />
+              return mainRows.map((row, index) => {
+                const isViagemCompartilhada =
+                  (row.status || "").toLowerCase() === "viagem_compartilhada";
+                const childRows = isViagemCompartilhada
+                  ? reservas.filter((r) => r.viagem_compartilhada === row.id)
+                  : [];
+                const hasChildren = childRows.length > 0;
+                const isExpanded = expanded === row.id;
+                const isEvenRow = index % 2 === 0;
+
+                return (
+                  <React.Fragment key={row.id}>
+                    <tr
+                      className={`border-t cursor-pointer hover:bg-muted/40 ${
+                        isEvenRow ? "bg-muted/50" : ""
+                      }`}
+                      onClick={() =>
+                        setExpanded(expanded === row.id ? null : row.id)
+                      }
+                    >
+                      <td className="p-2 break-words">
+                        <div className="flex items-center gap-1">
+                          {hasChildren ? (
+                            isExpanded ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            )
+                          ) : (
+                            <span className="w-4" />
+                          )}
+                          <span className="font-mono text-xs">#{row.id}</span>
+                          {hasChildren && (
+                            <span className="text-[10px] text-purple-600">
+                              ({childRows.length})
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        {formatDateTime(row.data_criacao, "")}
+                      </td>
+                      <td className="p-2 break-words">
+                        {row.solicitante_nome}
+                      </td>
+                      <td className="p-2">{row.municipio}</td>
+                      <td className="p-2">
+                        {formatDateTime(row.data_saida, row.horario_saida)}
+                      </td>
+                      <td className="p-2">
+                        {formatDateTime(row.data_retorno, row.horario_retorno)}
+                      </td>
+                      <td className="p-2">
+                        <Badge className={getStatusBadgeClasses(row.status)}>
+                          {formatStatusLabel(row.status)}
+                        </Badge>
+                      </td>
+                      <td className="p-2 break-words">
+                        {row.autorizador_nome ?? "-"}
                       </td>
                     </tr>
-                  )}
-                </React.Fragment>
-              ))
-            )}
+
+                    {/* Nested Children Rows (for viagem_compartilhada) */}
+                    {isExpanded &&
+                      hasChildren &&
+                      childRows.map((child) => (
+                        <React.Fragment key={`child-${child.id}`}>
+                          <tr
+                            className="bg-muted/10 border-t border-dashed cursor-pointer hover:bg-muted/20"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedChild(
+                                expandedChild === child.id ? null : child.id
+                              );
+                            }}
+                          >
+                            <td className="p-2 pl-6">
+                              <span className="text-muted-foreground">└</span>
+                              <span className="font-mono text-xs text-muted-foreground ml-1">
+                                #{child.id}
+                              </span>
+                            </td>
+                            <td className="p-2 text-muted-foreground text-sm">
+                              {formatDateTime(child.data_criacao, "")}
+                            </td>
+                            <td className="p-2 text-muted-foreground text-sm">
+                              {child.solicitante_nome}
+                            </td>
+                            <td className="p-2 text-muted-foreground text-sm">
+                              {child.municipio}
+                            </td>
+                            <td className="p-2 text-muted-foreground text-sm">
+                              {formatDateTime(
+                                child.data_saida,
+                                child.horario_saida
+                              )}
+                            </td>
+                            <td className="p-2 text-muted-foreground text-sm">
+                              {formatDateTime(
+                                child.data_retorno,
+                                child.horario_retorno
+                              )}
+                            </td>
+                            <td className="p-2">
+                              <Badge
+                                className={getStatusBadgeClasses(child.status)}
+                              >
+                                {formatStatusLabel(child.status)}
+                              </Badge>
+                            </td>
+                            <td className="p-2 text-muted-foreground text-sm">
+                              {child.autorizador_nome ?? "-"}
+                            </td>
+                          </tr>
+                          {/* Expanded detail for child */}
+                          {expandedChild === child.id && (
+                            <tr>
+                              <td colSpan={8} className="p-4 bg-muted/20 pl-10">
+                                <ReservaCard reserva={child} />
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+
+                    {/* Expanded Detail Panel */}
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={8} className="p-4 bg-muted/30">
+                          <ReservaCard
+                            reserva={row}
+                            onCancel={(id) =>
+                              cancelReserva(id, authUser?.name || "Usuário")
+                            }
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              });
+            })()}
           </tbody>
         </table>
       </div>

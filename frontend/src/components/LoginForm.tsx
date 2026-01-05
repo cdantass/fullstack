@@ -41,6 +41,7 @@ export function LoginForm({
       await authorizeUser(accessToken, refreshToken);
 
       navigate("/");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(
         err.response?.data?.detail ||

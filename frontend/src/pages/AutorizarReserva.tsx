@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Fragment } from "react";
 import { useReservas, type Reserva } from "@/context/reserva-context-hook";
 import { useAuth } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
@@ -19,17 +20,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+
 import {
   Dialog,
   DialogContent,
@@ -384,23 +375,6 @@ export default function AutorizarPage() {
     }
   };
 
-  const handleConcludeReserva = async (id: number) => {
-    const reservaOriginal = reservas.find((r) => r.id === id);
-    if (!reservaOriginal) return;
-
-    try {
-      await api.put(`/api/chamados/${id}/`, {
-        ...reservaOriginal,
-        status: "Concluido",
-      });
-      updateReserva(id, { status: "Concluido" });
-      toast.success("Reserva concluída com sucesso!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Falha ao concluir a reserva.");
-    }
-  };
-
   const filteredReservas = React.useMemo(() => {
     let data = [...reservas];
 
@@ -464,7 +438,6 @@ export default function AutorizarPage() {
           }
         }
 
-        // Check if searching by ID directly (e.g. #123 or just 123)
         const idSearch = lowerSearch.replace("#", "");
         const isIdSearch = /^\d+$/.test(idSearch);
 
@@ -613,7 +586,7 @@ export default function AutorizarPage() {
                   const isEvenRow = index % 2 === 0;
 
                   return (
-                    <React.Fragment key={row.id}>
+                    <Fragment key={`row-${row.id}`}>
                       <tr
                         className={`border-t cursor-pointer hover:bg-muted/40 ${
                           isEvenRow ? "bg-muted/50" : ""
@@ -682,10 +655,9 @@ export default function AutorizarPage() {
                         </td>
                       </tr>
 
-                      {/* Nested Children Rows (for viagem_compartilhada) - shown right after parent row */}
                       {hasChildren &&
                         childRows.map((child) => (
-                          <React.Fragment key={`child-${child.id}`}>
+                          <Fragment key={`child-${child.id}`}>
                             <tr
                               className="bg-muted/15 border-t border-dashed cursor-pointer hover:bg-muted/25"
                               onClick={(e) => {
@@ -745,7 +717,7 @@ export default function AutorizarPage() {
                                 </td>
                               </tr>
                             )}
-                          </React.Fragment>
+                          </Fragment>
                         ))}
 
                       {/* Expanded Detail Panel for parent row */}
@@ -878,7 +850,7 @@ export default function AutorizarPage() {
                           </td>
                         </tr>
                       )}
-                    </React.Fragment>
+                    </Fragment>
                   );
                 });
               })()}

@@ -117,7 +117,7 @@ export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
           </div>
           <ul className="list-disc list-inside ml-6">
             {passageirosList.map((p, i) => (
-              <li key={i}>{p}</li>
+              <li key={`passenger-${reserva.id}-${i}`}>{p}</li>
             ))}
             {passageirosList.length === 0 && <li>-</li>}
           </ul>
@@ -138,7 +138,11 @@ export function ReservaCard({ reserva, onCancel }: ReservaCardProps) {
             <div className="flex gap-2 flex-wrap">
               {Array.isArray(reserva.paradas) &&
                 reserva.paradas.map((p, i) => (
-                  <Badge key={i} variant="outline" className="bg-muted">
+                  <Badge
+                    key={`stop-${reserva.id}-${i}`}
+                    variant="outline"
+                    className="bg-muted"
+                  >
                     {p.local}
                   </Badge>
                 ))}

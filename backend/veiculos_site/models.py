@@ -94,6 +94,7 @@ class Chamado(models.Model):
         ('combinado', 'Combinado'),
         ('concluido', 'Concluído'),
         ('recusado', 'Recusado'),
+        ('cancelado', 'Cancelado'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
     data_criacao = models.DateTimeField(auto_now_add=True)

@@ -33,12 +33,18 @@ export type Reserva = {
   paradas: { local: string }[];
   unidade?: string;
   localidade?: string;
-  viagem_compartilhada?: number | null; // FK to parent chamado
-  chamados_combinados?: Reserva[]; // Child chamados (only on parent)
+  viagem_compartilhada?: number | null;
+  chamados_combinados?: Reserva[];
 };
 
-export type AddReservaPayload = Omit<Reserva, ""> & {
-  id?: number;
+export type AddReservaPayload = Omit<
+  Reserva,
+  "id" | "municipio" | "veiculo_designado" | "motorista_designado"
+> & {
+  id?: number | null;
+  municipio: string | number;
+  veiculo_designado?: number | null;
+  motorista_designado?: number | null;
 };
 
 export type ReservaContextType = {

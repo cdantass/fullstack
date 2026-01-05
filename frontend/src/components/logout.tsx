@@ -7,7 +7,6 @@ const LogoutButton = () => {
   const { logout } = useAuth();
 
   const handleLogout = () => {
-    console.log("Logout clicked");
     logout();
   };
 

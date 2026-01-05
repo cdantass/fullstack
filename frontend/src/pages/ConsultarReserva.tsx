@@ -70,8 +70,6 @@ export default function ConsultarReservaPage() {
 
   React.useEffect(() => {
     fetchReservas();
-    // No need to fetch motoristas/veiculos for this page anymore
-    // as they are embedded in the reserva object for display purposes
   }, [fetchReservas]);
 
   const requestSort = (key: keyof Reserva) => {
@@ -92,9 +90,7 @@ export default function ConsultarReservaPage() {
 
     // Gestor can see everything (or specific filters), regular user only theirs
     if (authUser.usertype !== "gestor") {
-      data = data.filter(
-        (r) => String(r.solicitante_nome) === String(authUser.id)
-      );
+      data = data.filter((r) => r.solicitante_nome === authUser.name);
     }
 
     // Date filtering
@@ -112,7 +108,7 @@ export default function ConsultarReservaPage() {
     } else {
       const now = new Date();
       data = data.filter((r) => {
-        // data_criacao is full ISO string now
+        // data_criacao is full ISO string
         const solicitacaoDate = new Date(r.data_criacao);
         const diffTime = now.getTime() - solicitacaoDate.getTime();
         const diffDays = diffTime / (1000 * 3600 * 24);

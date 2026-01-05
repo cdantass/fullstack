@@ -244,6 +244,7 @@ export default function ReservaPage() {
       const municipioNumeric = Number(values.municipio);
 
       const payload = {
+        id: null,
         solicitante_nome: user?.name || "Usuário",
         veiculo_designado: null,
         motorista_designado: null,
@@ -254,11 +255,12 @@ export default function ReservaPage() {
         ...passengerFields,
         municipio: municipioNumeric,
         observacao: values.observacao || "",
+        status: "PENDENTE",
+        data_criacao: new Date().toISOString(),
         paradas: paradasTransformed,
       };
 
       console.log("Payload being sent:", payload);
-      // @ts-ignore
       await addReserva(payload);
 
       form.reset({
@@ -273,10 +275,10 @@ export default function ReservaPage() {
       });
       setParadaInput("");
       setPassageiroInput("");
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
       toast.error(
-        error?.response?.data?.message || "Erro ao enviar solicitação."
+        (error as any)?.response?.data?.message || "Erro ao enviar solicitação."
       );
     } finally {
       setLoading(false);

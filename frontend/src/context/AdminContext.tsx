@@ -40,10 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch (error) {
       console.error("Failed to fetch user", error);
-      // If pull fails (e.g. 401), maybe logout?
-      // For now, just leave user null or rely on interceptors.
-      // But if we have a token and it fails, we probably should logout or retry?
-      // Let's assume if this fails, the user is not authenticated nicely.
+      // se der um erro 401 talvez deslogar o usuário?
       setUser(null);
     } finally {
       setLoading(false);
@@ -54,8 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
     if (accessToken) {
-      // We could decode first for speed, but source of truth is API now.
-      // Let's just fetch.
       fetchUser();
     } else {
       setLoading(false);

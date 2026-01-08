@@ -6,8 +6,9 @@ import { useAuth } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowUpDown, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowUpDown, ChevronDown, ChevronRight, Download } from "lucide-react";
 import { formatDateTime, formatStatusLabel } from "@/lib/utils";
+import { exportReservasToExcel } from "@/lib/excel-export-utils";
 import { ReservaCard } from "@/components/ReservaCard";
 
 import {
@@ -315,8 +316,8 @@ export default function ConsultarReservaPage() {
                   {range === "24h"
                     ? "24h"
                     : range === "7d"
-                    ? "7 dias"
-                    : "30 dias"}
+                      ? "7 dias"
+                      : "30 dias"}
                 </Button>
               ))}
             </div>
@@ -342,6 +343,17 @@ export default function ConsultarReservaPage() {
               }}
               className="w-auto h-9"
             />
+
+            <Button
+              onClick={() =>
+                exportReservasToExcel(sortedAndFilteredReservas, reservas)
+              }
+              variant="outline"
+              size="sm"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Exportar Excel
+            </Button>
           </div>
         </div>
       </div>

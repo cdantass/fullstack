@@ -40,12 +40,14 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronRight,
+  Download,
   Link,
   MapPin,
   PlusCircleIcon,
   Users,
   X,
 } from "lucide-react";
+import { exportReservasToExcel } from "@/lib/excel-export-utils";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Motorista {
@@ -527,6 +529,15 @@ export default function AutorizarPage() {
             Combinar Viagens ({selectedReservas.length})
           </Button>
         )}
+
+        <Button
+          onClick={() => exportReservasToExcel(filteredReservas, reservas)}
+          variant="outline"
+          className="ml-auto"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Exportar Excel
+        </Button>
       </div>
 
       <div className="border rounded-md overflow-hidden">
@@ -534,21 +545,7 @@ export default function AutorizarPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted text-left text-muted-foreground">
               <tr>
-                <th className="p-3 w-[50px]">
-                  <Checkbox
-                    checked={
-                      filteredReservas.some(
-                        (r) => (r.status || "").toLowerCase() === "pendente"
-                      ) &&
-                      filteredReservas
-                        .filter(
-                          (r) => (r.status || "").toLowerCase() === "pendente"
-                        )
-                        .every((r) => selectedReservas.includes(r.id))
-                    }
-                    onCheckedChange={handleSelectAll}
-                  />
-                </th>
+                <th className="p-3 w-[50px]"></th>
                 <th className="p-3">ID</th>
                 <th className="p-3">Data Solicitação</th>
                 <th className="p-3">Solicitante</th>

@@ -7,6 +7,7 @@ router = DefaultRouter()
 router.register(r'veiculos', views.VeiculoViewSet, basename='veiculo')
 router.register(r'motoristas', views.MotoristaViewSet, basename='motorista')
 router.register(r'chamados', views.ChamadoViewSet, basename='chamado')
+router.register(r'avaliacoes', views.AvaliacaoViewSet, basename='avaliacao')
 
 urlpatterns = [
     # Custom endpoints must come BEFORE router to take precedence

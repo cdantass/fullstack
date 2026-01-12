@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
-from .models import Veiculo, Motorista, Chamado, Municipio, Parada
+from .models import Veiculo, Motorista, Chamado, Municipio, Parada, Avaliacao
 
 User = get_user_model()
 
@@ -54,13 +55,24 @@ class ParadaSerializer(serializers.ModelSerializer):
         model = Parada
         fields = ['local']
 
+class AvaliacaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Avaliacao
+        fields = ['id', 'chamado', 'nota', 'comentario', 'usuario', 'data_avaliacao']
+        read_only_fields = ['usuario', 'data_avaliacao']
+
 class ChamadoSerializer(serializers.ModelSerializer):
     solicitante_nome = serializers.SerializerMethodField()
     autorizador_nome = serializers.SerializerMethodField()
+    concluidor_nome = serializers.SerializerMethodField()
+    cancelador_nome = serializers.SerializerMethodField()
+    is_grupo = serializers.SerializerMethodField()
+    is_compartilhado = serializers.SerializerMethodField()
+    avaliacao = AvaliacaoSerializer(read_only=True)
 
     municipio = serializers.CharField(source='municipio.nome', read_only=True)
-    motorista_designado = serializers.StringRelatedField(read_only=True)
-    veiculo_designado = serializers.StringRelatedField(read_only=True)
+    motorista_designado = MotoristaSerializer(read_only=True)
+    veiculo_designado = VeiculoSerializer(read_only=True)
     paradas = ParadaSerializer(many=True, read_only=True)
 
     class Meta:
@@ -71,7 +83,9 @@ class ChamadoSerializer(serializers.ModelSerializer):
             'horario_retorno', 'passageiro1', 'passageiro2', 'passageiro3',
             'passageiro4', 'municipio', 'observacao', 'status', 'data_criacao',
             'autorizador', 'autorizador_nome', 'observacao_autorizador', 'data_autorizacao',
-            'paradas', 'viagem_compartilhada'
+            'data_conclusao', 'data_cancelamento',
+            'concluidor', 'concluidor_nome', 'cancelador', 'cancelador_nome',
+            'paradas', 'viagem_compartilhada', 'is_grupo', 'is_compartilhado', 'avaliacao'
         ]
         read_only_fields = ['solicitante', 'autorizador']
 
@@ -85,6 +99,21 @@ class ChamadoSerializer(serializers.ModelSerializer):
             return obj.autorizador.username
         return None
 
+    def get_concluidor_nome(self, obj):
+        if obj.concluidor:
+            return obj.concluidor.username
+        return None
+
+    def get_cancelador_nome(self, obj):
+        if obj.cancelador:
+            return obj.cancelador.username
+        return None
+
+    def get_is_grupo(self, obj):
+        return obj.chamados_combinados.exists()
+
+    def get_is_compartilhado(self, obj):
+        return obj.viagem_compartilhada_id is not None
 
 
 class ChamadoCreateSerializer(serializers.ModelSerializer):
@@ -147,6 +176,11 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
     motorista_designado = MotoristaSerializer(read_only=True)
     veiculo_designado = VeiculoSerializer(read_only=True)
     paradas = ParadaSerializer(many=True, read_only=True)
+    concluidor_nome = serializers.SerializerMethodField()
+    cancelador_nome = serializers.SerializerMethodField()
+    is_grupo = serializers.SerializerMethodField()
+    is_compartilhado = serializers.SerializerMethodField()
+    avaliacao = AvaliacaoSerializer(read_only=True)
 
     motorista_id = serializers.PrimaryKeyRelatedField(
         queryset=Motorista.objects.all(),
@@ -175,8 +209,11 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
             'data_retorno', 'horario_retorno', 'passageiro1', 'passageiro2',
             'passageiro3', 'passageiro4', 'municipio', 'observacao', 'status',
             'data_criacao', 'autorizador', 'autorizador_nome', 'observacao_autorizador',
-            'data_autorizacao', 'motorista_designado', 'veiculo_designado',
-            'paradas', 'motorista_id', 'veiculo_id', 'viagem_compartilhada'
+            'data_autorizacao', 'data_conclusao', 'data_cancelamento',
+            'concluidor_nome', 'cancelador_nome',
+            'motorista_designado', 'veiculo_designado',
+            'paradas', 'motorista_id', 'veiculo_id', 'viagem_compartilhada', 
+            'is_grupo', 'is_compartilhado', 'avaliacao'
         ]
         read_only_fields = ['solicitante', 'autorizador', 'data_criacao', 'data_autorizacao']
 
@@ -189,6 +226,22 @@ class ChamadoGestorSerializer(serializers.ModelSerializer):
         if obj.autorizador:
             return obj.autorizador.username
         return None
+
+    def get_concluidor_nome(self, obj):
+        if obj.concluidor:
+            return obj.concluidor.username
+        return None
+
+    def get_cancelador_nome(self, obj):
+        if obj.cancelador:
+            return obj.cancelador.username
+        return None
+
+    def get_is_grupo(self, obj):
+        return obj.chamados_combinados.exists()
+
+    def get_is_compartilhado(self, obj):
+        return obj.viagem_compartilhada_id is not None
 
 
 class MergeChamadoSerializer(serializers.Serializer):

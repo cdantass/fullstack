@@ -72,6 +72,21 @@ class Chamado(models.Model):
     )
     motorista_designado = models.ForeignKey('Motorista', on_delete=models.SET_NULL, null=True, blank=True)
     veiculo_designado = models.ForeignKey('Veiculo', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    concluidor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name='chamados_concluidos',
+        null=True,
+        blank=True
+    )
+    cancelador = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name='chamados_cancelados',
+        null=True,
+        blank=True
+    )
 
     data_saida = models.DateField()
     horario_saida = models.TimeField()
@@ -101,6 +116,8 @@ class Chamado(models.Model):
 
     observacao_autorizador = models.TextField(blank=True)
     data_autorizacao = models.DateTimeField(null=True, blank=True)
+    data_conclusao = models.DateTimeField(null=True, blank=True)
+    data_cancelamento = models.DateTimeField(null=True, blank=True)
 
     # FK to parent chamado for combined trips
     viagem_compartilhada = models.ForeignKey(
@@ -158,12 +175,37 @@ class Chamado(models.Model):
             if self.status in ['aprovado', 'em_andamento']:
                 self.motorista_designado.status = 'em_viagem'
                 self.veiculo_designado.status = 'em_uso'
-            elif self.status in ['concluido', 'recusado']:
+            elif self.status in ['concluido', 'recusado', 'cancelado']:
                 self.motorista_designado.status = 'disponivel'
                 self.veiculo_designado.status = 'disponivel'
+
+            if self.status == 'concluido' and not self.data_conclusao:
+                self.data_conclusao = timezone.now()
+            elif self.status == 'cancelado' and not self.data_cancelamento:
+                self.data_cancelamento = timezone.now()
 
             self.motorista_designado.save()
             self.veiculo_designado.save()
 
     def __str__(self):
         return f"Chamado de {self.solicitante_id} em {self.data_saida}"
+
+class Avaliacao(models.Model):
+    chamado = models.OneToOneField(
+        Chamado,
+        on_delete=models.CASCADE,
+        related_name='avaliacao',
+        verbose_name="Chamado"
+    )
+    nota = models.IntegerField(verbose_name="Nota")
+    comentario = models.TextField(blank=True, verbose_name="Comentário")
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='avaliacoes',
+        verbose_name="Usuário"
+    )
+    data_avaliacao = models.DateTimeField(auto_now_add=True, verbose_name="Data da Avaliação")
+
+    def __str__(self):
+        return f"Avaliação do Chamado {self.chamado.id} - Nota {self.nota}"

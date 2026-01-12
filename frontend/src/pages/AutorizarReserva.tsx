@@ -32,7 +32,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import api from "@/api";
-import { formatDateTime, formatStatusLabel } from "@/lib/utils";
+import { cn, formatDateTime, formatStatusLabel } from "@/lib/utils";
 import { ReservaCard } from "@/components/ReservaCard";
 
 import {
@@ -68,6 +68,7 @@ const getStatusBadgeClasses = (status: string) => {
   switch ((status || "").toLowerCase()) {
     case "aprovado":
       return "bg-green-100 text-green-800 hover:bg-green-200";
+    case "negado":
     case "recusado":
       return "bg-red-100 text-red-800 hover:bg-red-200";
     case "pendente":
@@ -553,6 +554,7 @@ export default function AutorizarPage() {
                 <th className="p-3">Data Saída</th>
                 <th className="p-3">Data Retorno</th>
                 <th className="p-3">Status</th>
+                <th className="p-3">Responsável</th>
               </tr>
             </thead>
             <tbody>
@@ -565,7 +567,7 @@ export default function AutorizarPage() {
                 if (mainRows.length === 0) {
                   return (
                     <tr>
-                      <td colSpan={8} className="text-center p-4">
+                      <td colSpan={9} className="text-center p-4">
                         Nenhuma reserva encontrada.
                       </td>
                     </tr>
@@ -574,6 +576,7 @@ export default function AutorizarPage() {
 
                 return mainRows.map((row: Reserva, index: number) => {
                   const isViagemCompartilhada =
+                    row.is_grupo ||
                     (row.status || "").toLowerCase() === "viagem_compartilhada";
                   const childRows = isViagemCompartilhada
                     ? reservas.filter((r) => r.viagem_compartilhada === row.id)
@@ -646,9 +649,33 @@ export default function AutorizarPage() {
                           )}
                         </td>
                         <td className="p-3 whitespace-nowrap">
-                          <Badge className={getStatusBadgeClasses(row.status)}>
-                            {formatStatusLabel(row.status)}
+                          <Badge
+                            className={cn(
+                              getStatusBadgeClasses(
+                                row.status === "combinado"
+                                  ? "aprovado"
+                                  : row.status
+                              )
+                            )}
+                          >
+                            {(() => {
+                              const s = row.status.toLowerCase();
+                              if (s === "aprovado" || s === "combinado")
+                                return "Autorizado";
+                              if (s === "recusado" || s === "negado")
+                                return "Negado";
+                              if (s === "cancelado") return "Cancelado";
+                              if (s === "concluido") return "Concluído";
+                              return formatStatusLabel(row.status);
+                            })()}
                           </Badge>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {row.status.toLowerCase() === "concluido"
+                            ? row.concluidor_nome
+                            : row.status.toLowerCase() === "cancelado"
+                              ? row.cancelador_nome
+                              : (row.autorizador_nome ?? "-")}
                         </td>
                       </tr>
 
@@ -695,19 +722,55 @@ export default function AutorizarPage() {
                               </td>
                               <td className="p-3 whitespace-nowrap">
                                 <Badge
-                                  className={getStatusBadgeClasses(
-                                    child.status
+                                  className={cn(
+                                    getStatusBadgeClasses(
+                                      row.status === "combinado"
+                                        ? "aprovado"
+                                        : row.status
+                                    )
                                   )}
                                 >
-                                  {formatStatusLabel(child.status)}
+                                  {(() => {
+                                    // Herdar status do pai para fins visuais
+                                    const s = row.status.toLowerCase();
+                                    if (s === "aprovado" || s === "combinado")
+                                      return "Autorizado";
+                                    if (s === "recusado" || s === "negado")
+                                      return "Negado";
+                                    if (s === "cancelado") return "Cancelado";
+                                    if (s === "concluido") return "Concluído";
+                                    return formatStatusLabel(row.status);
+                                  })()}
                                 </Badge>
+                              </td>
+                              <td className="p-3 whitespace-nowrap text-muted-foreground text-sm">
+                                {(() => {
+                                  const s = row.status.toLowerCase();
+                                  if (s === "concluido")
+                                    return (
+                                      child.concluidor_nome ||
+                                      row.concluidor_nome ||
+                                      "-"
+                                    );
+                                  if (s === "cancelado")
+                                    return (
+                                      child.cancelador_nome ||
+                                      row.cancelador_nome ||
+                                      "-"
+                                    );
+                                  return (
+                                    child.autorizador_nome ||
+                                    row.autorizador_nome ||
+                                    "-"
+                                  );
+                                })()}
                               </td>
                             </tr>
                             {/* Expanded detail for child */}
                             {expandedChild === child.id && (
                               <tr>
                                 <td
-                                  colSpan={8}
+                                  colSpan={9}
                                   className="p-4 bg-muted/20 pl-10"
                                 >
                                   <ReservaCard reserva={child} />
@@ -720,7 +783,7 @@ export default function AutorizarPage() {
                       {/* Expanded Detail Panel for parent row */}
                       {isExpanded && (
                         <tr>
-                          <td colSpan={8} className="p-4 bg-muted/30">
+                          <td colSpan={9} className="p-4 bg-muted/30">
                             <ReservaCard reserva={row} />
                             {row.status.toLowerCase() === "pendente" && (
                               <div className="border-t pt-4 mt-4 space-y-4">

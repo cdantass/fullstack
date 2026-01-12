@@ -54,6 +54,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
         autorizador_nome: autorizador,
       });
       updateReserva(id, { status: "cancelado", autorizador_nome: autorizador });
+      await fetchReservas();
       toast.success("Reserva cancelada com sucesso.");
     } catch (error) {
       console.error(error);
@@ -72,6 +73,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
         status: "concluido",
       });
       updateReserva(id, { status: "concluido" });
+      await fetchReservas();
       toast.success("Reserva concluída com sucesso.");
     } catch (error) {
       console.error(error);

@@ -1,5 +1,14 @@
 import { createContext, useContext } from "react";
 
+export type Avaliacao = {
+  id: number;
+  chamado: number;
+  nota: number;
+  comentario: string;
+  usuario: number;
+  data_avaliacao: string;
+};
+
 export type Reserva = {
   id: number;
   solicitante_nome: string;
@@ -18,6 +27,12 @@ export type Reserva = {
   autorizador_nome?: string;
   observacao_autorizador?: string;
   data_autorizacao?: string;
+  data_conclusao?: string;
+  data_cancelamento?: string;
+  concluidor_nome?: string;
+  cancelador_nome?: string;
+  is_grupo?: boolean;
+  is_compartilhado?: boolean;
   motorista_designado?: {
     id: number;
     nome_motorista: string;
@@ -35,6 +50,7 @@ export type Reserva = {
   localidade?: string;
   viagem_compartilhada?: number | null;
   chamados_combinados?: Reserva[];
+  avaliacao?: Avaliacao | null;
 };
 
 export type AddReservaPayload = Omit<

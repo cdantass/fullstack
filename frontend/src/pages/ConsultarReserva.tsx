@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowUpDown, ChevronDown, ChevronRight, Download } from "lucide-react";
-import { formatDateTime, formatStatusLabel } from "@/lib/utils";
+import { cn, formatDateTime, formatStatusLabel } from "@/lib/utils";
 import { exportReservasToExcel } from "@/lib/excel-export-utils";
 import { ReservaCard } from "@/components/ReservaCard";
+import { AvaliacaoModal } from "@/components/AvaliacaoModal";
 
 import {
   Select,
@@ -33,6 +34,7 @@ const getStatusBadgeClasses = (status: string) => {
   switch ((status || "").toLowerCase()) {
     case "aprovado":
       return "bg-green-100 text-green-800 hover:bg-green-200";
+    case "negado":
     case "recusado":
       return "bg-red-100 text-red-800 hover:bg-red-200";
     case "pendente":
@@ -68,6 +70,15 @@ export default function ConsultarReservaPage() {
   >("24h");
   const perPage = 10;
   const [searchTerm, setSearchTerm] = React.useState("");
+
+  const [isAvaliacaoModalOpen, setIsAvaliacaoModalOpen] = React.useState(false);
+  const [selectedReservaForAvaliacao, setSelectedReservaForAvaliacao] =
+    React.useState<Reserva | null>(null);
+
+  const handleOpenAvaliacao = (reserva: Reserva) => {
+    setSelectedReservaForAvaliacao(reserva);
+    setIsAvaliacaoModalOpen(true);
+  };
 
   React.useEffect(() => {
     fetchReservas();
@@ -446,7 +457,7 @@ export default function ConsultarReservaPage() {
                   onClick={() => requestSort("autorizador_nome")}
                   className="px-2 py-1 h-auto w-full justify-start text-left"
                 >
-                  Autorizador
+                  Responsável
                   <ArrowUpDown className="ml-2 h-3 w-3" />
                 </Button>
               </th>
@@ -472,6 +483,7 @@ export default function ConsultarReservaPage() {
 
               return mainRows.map((row, index) => {
                 const isViagemCompartilhada =
+                  row.is_grupo ||
                   (row.status || "").toLowerCase() === "viagem_compartilhada";
                 const childRows = isViagemCompartilhada
                   ? reservas.filter((r) => r.viagem_compartilhada === row.id)
@@ -523,12 +535,33 @@ export default function ConsultarReservaPage() {
                         {formatDateTime(row.data_retorno, row.horario_retorno)}
                       </td>
                       <td className="p-2">
-                        <Badge className={getStatusBadgeClasses(row.status)}>
-                          {formatStatusLabel(row.status)}
+                        <Badge
+                          className={cn(
+                            getStatusBadgeClasses(
+                              row.status === "combinado"
+                                ? "aprovado"
+                                : row.status
+                            )
+                          )}
+                        >
+                          {(() => {
+                            const s = row.status.toLowerCase();
+                            if (s === "aprovado" || s === "combinado")
+                              return "Autorizado";
+                            if (s === "recusado" || s === "negado")
+                              return "Negado";
+                            if (s === "cancelado") return "Cancelado";
+                            if (s === "concluido") return "Concluído";
+                            return formatStatusLabel(row.status);
+                          })()}
                         </Badge>
                       </td>
                       <td className="p-2 break-words">
-                        {row.autorizador_nome ?? "-"}
+                        {row.status.toLowerCase() === "concluido"
+                          ? row.concluidor_nome
+                          : row.status.toLowerCase() === "cancelado"
+                            ? row.cancelador_nome
+                            : (row.autorizador_nome ?? "-")}
                       </td>
                     </tr>
 
@@ -575,20 +608,58 @@ export default function ConsultarReservaPage() {
                             </td>
                             <td className="p-2">
                               <Badge
-                                className={getStatusBadgeClasses(child.status)}
+                                className={cn(
+                                  getStatusBadgeClasses(
+                                    row.status === "combinado"
+                                      ? "aprovado"
+                                      : row.status
+                                  )
+                                )}
                               >
-                                {formatStatusLabel(child.status)}
+                                {(() => {
+                                  // Sempre usar o status do pai (row) para as viagens vinculadas
+                                  const s = row.status.toLowerCase();
+                                  if (s === "aprovado" || s === "combinado")
+                                    return "Autorizado";
+                                  if (s === "recusado" || s === "negado")
+                                    return "Negado";
+                                  if (s === "cancelado") return "Cancelado";
+                                  if (s === "concluido") return "Concluído";
+                                  return formatStatusLabel(row.status);
+                                })()}
                               </Badge>
                             </td>
                             <td className="p-2 text-muted-foreground text-sm">
-                              {child.autorizador_nome ?? "-"}
+                              {(() => {
+                                const s = row.status.toLowerCase(); // Usar status do pai para decidir o campo
+                                if (s === "concluido")
+                                  return (
+                                    child.concluidor_nome ||
+                                    row.concluidor_nome ||
+                                    "-"
+                                  );
+                                if (s === "cancelado")
+                                  return (
+                                    child.cancelador_nome ||
+                                    row.cancelador_nome ||
+                                    "-"
+                                  );
+                                return (
+                                  child.autorizador_nome ||
+                                  row.autorizador_nome ||
+                                  "-"
+                                );
+                              })()}
                             </td>
                           </tr>
                           {/* Expanded detail for child */}
                           {expandedChild === child.id && (
                             <tr>
                               <td colSpan={8} className="p-4 bg-muted/20 pl-10">
-                                <ReservaCard reserva={child} />
+                                <ReservaCard
+                                  reserva={child}
+                                  onAvaliar={handleOpenAvaliacao}
+                                />
                               </td>
                             </tr>
                           )}
@@ -604,6 +675,7 @@ export default function ConsultarReservaPage() {
                             onCancel={(id) =>
                               cancelReserva(id, authUser?.name || "Usuário")
                             }
+                            onAvaliar={handleOpenAvaliacao}
                           />
                         </td>
                       </tr>
@@ -639,6 +711,15 @@ export default function ConsultarReservaPage() {
             Próximo
           </Button>
         </div>
+      )}
+
+      {selectedReservaForAvaliacao && (
+        <AvaliacaoModal
+          isOpen={isAvaliacaoModalOpen}
+          onClose={() => setIsAvaliacaoModalOpen(false)}
+          reserva={selectedReservaForAvaliacao}
+          onSuccess={() => fetchReservas()}
+        />
       )}
     </div>
   );

@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .models import Veiculo, Motorista, Chamado, Municipio, Parada
+from .models import Veiculo, Motorista, Chamado, Municipio, Parada, Avaliacao
 from .serializers import (
     CreateUserSerializer,
     VeiculoSerializer,
@@ -14,7 +14,8 @@ from .serializers import (
     ChamadoSerializer,
     ChamadoCreateSerializer,
     ChamadoGestorSerializer,
-    UserProfileSerializer
+    UserProfileSerializer,
+    AvaliacaoSerializer
 )
 
 User = get_user_model()
@@ -79,10 +80,38 @@ class ChamadoViewSet(viewsets.ModelViewSet):
         serializer.save(solicitante=self.request.user)
 
     def perform_update(self, serializer):
-        serializer.save(
-            autorizador=self.request.user,
-            data_autorizacao=timezone.now()
-        )
+        status_novo = self.request.data.get('status')
+        extra_fields = {}
+        
+        if status_novo == 'aprovado':
+            extra_fields['autorizador'] = self.request.user
+            extra_fields['data_autorizacao'] = timezone.now()
+        elif status_novo == 'concluido':
+            extra_fields['concluidor'] = self.request.user
+            extra_fields['data_conclusao'] = timezone.now()
+        elif status_novo == 'cancelado':
+            extra_fields['cancelador'] = self.request.user
+            extra_fields['data_cancelamento'] = timezone.now()
+            
+        instance = serializer.save(**extra_fields)
+
+        # Cascata de informações para os filhos (viagens vinculadas)
+        from .models import Chamado
+        filhos = Chamado.objects.filter(viagem_compartilhada=instance)
+        if filhos.exists():
+            update_data = {}
+            if status_novo in ['aprovado', 'concluido', 'cancelado']:
+                update_data['status'] = status_novo
+                update_data.update(extra_fields)
+            
+            # Propagar motorista e veículo se definidos no pai
+            if instance.motorista_designado:
+                update_data['motorista_designado'] = instance.motorista_designado
+            if instance.veiculo_designado:
+                update_data['veiculo_designado'] = instance.veiculo_designado
+            
+            if update_data:
+                filhos.update(**update_data)
 
 
 
@@ -197,7 +226,7 @@ class CombinarChamadosView(APIView):
             autorizador=request.user if request.user.is_authenticated else None,
             data_autorizacao=timezone.now(),
             observacao_autorizador=observacao,
-            status="viagem_compartilhada"
+            status="aprovado"
         )
 
         # Create paradas for the new chamado
@@ -208,8 +237,20 @@ class CombinarChamadosView(APIView):
         for ch in chamados:
             ch.status = "combinado"
             ch.viagem_compartilhada = novo_chamado
-            ch.save(update_fields=['status', 'viagem_compartilhada'])
+            ch.autorizador = novo_chamado.autorizador
+            ch.data_autorizacao = novo_chamado.data_autorizacao
+            ch.motorista_designado = novo_chamado.motorista_designado
+            ch.veiculo_designado = novo_chamado.veiculo_designado
+            ch.save(update_fields=['status', 'viagem_compartilhada', 'autorizador', 'data_autorizacao', 'motorista_designado', 'veiculo_designado'])
 
         serializer = ChamadoGestorSerializer(novo_chamado)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class AvaliacaoViewSet(viewsets.ModelViewSet):
+    queryset = Avaliacao.objects.all()
+    serializer_class = AvaliacaoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
 

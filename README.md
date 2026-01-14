@@ -30,7 +30,8 @@ Para configurar o frontend, siga os passos abaixo:
 
 2. Ativar o venv
 a) Apertar CTRL + SHIFT + P
-b) 
+b) Python Select Interpreter
+c) 
 
 1. Clone o repositório:
 

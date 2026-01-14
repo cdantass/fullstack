@@ -10,7 +10,7 @@ Este documento detalha as funcionalidades de cada módulo do sistema de gerencia
 
 ## Página Inicial (Dashboard)
 
-- Boas-vindas: Mensagem personalizada para o usuário autenticado.
+- Boas-vindas: Mensagem personalizada para o usuário autenticado (em desenvolvimento).
 - Resumo de Atividades: Atalhos e informações rápidas sobre o status da frota (em desenvolvimento).
 
 ## Reserva de Veículos

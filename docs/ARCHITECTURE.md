@@ -1,10 +1,10 @@
 # Arquitetura do Frontend - Sefaz Veículos
 
-Este documento detalha as decisões arquiteturais, a estrutura de pastas e os fluxos principais do frontend. Para uma lista detalhada das funcionalidades do usuário, consulte [docs/FEATURES.md](./FEATURES.md).
+Este documento detalha as decisões arquiteturais, a estrutura de pastas e os fluxos principais do frontend. Para uma lista detalhada das funcionalidades do usuário, consulte [FEATURES.md](./FEATURES.md).
 
 ## Estrutura de Pastas
 
-Abaixo está uma visão geral da organização do diretório `src/`:
+Abaixo está uma visão geral da organização do diretório `frontend/src/`:
 
 - `assets/`: Arquivos estáticos como imagens e SVGs.
 - `components/`: Componentes React reutilizáveis.
@@ -16,21 +16,21 @@ Abaixo está uma visão geral da organização do diretório `src/`:
 - `hooks/`: Hooks personalizados para lógica reutilizável.
 - `lib/`: Configurações de bibliotecas externas (ex: `utils.ts` para Tailwind Merge).
 - `pages/`: Componentes de página que correspondem às rotas da aplicação.
-- `api.ts`: Configuração do Axios e interceptadores para comunicação com o backend.
-- `App.tsx`: Ponto de entrada que define as rotas e os provedores de contexto.
+- `api.ts`: Configuração do Axios e interceptadores para comunicação com o backend em `frontend/src/api.ts`.
+- `App.tsx`: Ponto de entrada que define as rotas e os provedores de contexto em `frontend/src/App.tsx`.
 - `main.tsx`: Ponto de entrada do React que renderiza o componente `App`.
 
 ## Autenticação
 
 O sistema utiliza Keycloak para autenticação (em transição/configuração) e armazenamento de tokens JWT no `localStorage`.
 
-- **Intercepção de Requisições**: O arquivo `src/api.ts` contém um interceptador que anexa automaticamente o `access_token` ao cabeçalho `Authorization` de todas as requisições API, se o token estiver presente.
+- **Intercepção de Requisições**: O arquivo `frontend/src/api.ts` contém um interceptador que anexa automaticamente o `access_token` ao cabeçalho `Authorization` de todas as requisições API, se o token estiver presente.
 - **Rotas Protegidas**: O componente `ProtectedRoute` é usado para envolver rotas que exigem autenticação.
 - **Rotas de Admin**: O componente `AdminRoute` restringe o acesso a funcionalidades administrativas.
 
 ## Integração com API
 
-Toda a comunicação com o backend é feita através de uma instância centralizada do Axios em `src/api.ts`.
+Toda a comunicação com o backend é feita através de uma instância centralizada do Axios em `frontend/src/api.ts`.
 
 - **Base URL**: Definida através da variável de ambiente `VITE_API_URL`.
 - **Credenciais**: A configuração `withCredentials: true` é usada para lidar com cookies, se necessário.

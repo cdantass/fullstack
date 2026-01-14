@@ -4,7 +4,7 @@ Sistema de gerenciamento e reserva de veículos da SEFAZ, composto por um backen
 
 ## Estrutura do Repositório
 
-- `backend/`: API desenvolvida em Django.
+- `backend/`: API desenvolvida em Python + Django.
 - `frontend/`: Aplicação web desenvolvida em React + Vite.
 - `docs/`: Documentação detalhada do sistema.
 
@@ -20,7 +20,7 @@ Para detalhes sobre o funcionamento do sistema, consulte os documentos abaixo:
 Para configurar o frontend, siga os passos abaixo:
 
 ### Pré-requisitos
-- Python + Django
+- Python(3.12.9) + Django
 - Node.js (versão 18 ou superior)
 - npm ou yarn
 
@@ -29,14 +29,17 @@ Para configurar o frontend, siga os passos abaixo:
 1. Instale o venv (python -m venv venv)
 
 2. Ativar o venv
-a) Apertar CTRL + SHIFT + P
-b) Python Select Interpreter
-c) 
+A) Apertar CTRL + SHIFT + P
+B) Python Select Interpreter
+C) Enter interpreter path...
+D)   Find...
+E) Pasta criada\venv\Scripts e aqui encontramos o "python" e clicamos nele
+F) Abrir outro terminal
 
 1. Clone o repositório:
 
    ```bash
-   git clone <link-do-repositorio>
+   git clone -b recesso https://github.com/cdantass/fullstack.git
    ```
 
 2. Entre no diretório do backend:
@@ -48,10 +51,6 @@ c)
 
 3. Instale as dependências:
    ```bash
-   pip install django
-   pip install celery
-   pip install dotenv
-   pip install django-jazzmin
    pip install -r requirements.txt
    ```
 4. Faça as migrações:
@@ -68,18 +67,35 @@ Para rodar o backend em modo de desenvolvimento:
 python manage.py runserver
 ```
 
-O servidor iniciará em `http://`.
+O servidor iniciará em `http://127.0.0.1:8000/`.
 
 ## Desenvolvimento
 
 Para rodar o frontend em modo de desenvolvimento:
+Deixamos um terminal do backend rodando e abrimos outro terminal.
 
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 
 O servidor iniciará em `http://localhost:5173`.
+
+## Funcionalides
+
+Conseguimos acessar o painel de admin com:
+```bash
+python manage.py admin
+```
+
+Dentro do admin conseguimos criar um usuário e definir se é um gestor, adicionando esse usuário desejado para o grupo "GESTORES"
+
+
+Para acessar a documentação da API, digitamos: 
+```bash
+http://127.0.0.1:8000/api/docs/
+```
 
 ## Licença
 

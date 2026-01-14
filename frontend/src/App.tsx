@@ -15,20 +15,27 @@ import { ThemeProvider } from "./components/ThemeProvider";
 import { ReservaProvider } from "./context/ReservaContext";
 import { AuthProvider } from "./context/AdminContext";
 
+/**
+ * Componente principal da aplicação.
+ * Define a hierarquia de Provedores de Contexto e a configuração de rotas.
+ */
 function App() {
   return (
+    // Provedor de Temas (Dark/Light mode)
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      {/* Provedor de Autenticação e Dados do Usuário */}
       <AuthProvider>
+        {/* Provedor de Estado das Reservas */}
         <ReservaProvider>
           <BrowserRouter>
             <Routes>
-              {/* Public Routes */}
+              {/* --- Rotas Públicas --- */}
               <Route path="/login" element={<Login />} />
 
-              {/* Protected Routes */}
+              {/* --- Rotas Protegidas (Exigem Login) --- */}
               <Route element={<ProtectedRoute />}>
                 <Route element={<MainLayout />}>
-                  {/* General Protected Routes */}
+                  {/* Rotas acessíveis por qualquer usuário autenticado */}
                   <Route path="/" element={<Home />} />
                   <Route path="/reservar-veiculo" element={<ReservaPage />} />
                   <Route
@@ -36,7 +43,7 @@ function App() {
                     element={<ConsultarReservaPage />}
                   />
 
-                  {/* Private Routes */}
+                  {/* --- Rotas Privadas (Apenas Administradores) --- */}
                   <Route
                     path="/autorizar-reserva"
                     element={
@@ -48,7 +55,7 @@ function App() {
                 </Route>
               </Route>
 
-              {/* Fallback 404 Route */}
+              {/* Rota de Fallback para páginas não encontradas */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

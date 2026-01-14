@@ -15,16 +15,22 @@ Para detalhes sobre o funcionamento do sistema, consulte os documentos abaixo:
 - [Arquitetura do Frontend](./docs/ARCHITECTURE.md)
 - [Funcionalidades da Aplicação](./docs/FEATURES.md)
 
-## Configuração e Instalação (Frontend)
+## Configuração e Instalação (Frontend + Backend)
 
 Para configurar o frontend, siga os passos abaixo:
 
 ### Pré-requisitos
-
+- Python + Django
 - Node.js (versão 18 ou superior)
 - npm ou yarn
 
+
 ### Instalação
+1. Instale o venv (python -m venv venv)
+
+2. Ativar o venv
+a) Apertar CTRL + SHIFT + P
+b) 
 
 1. Clone o repositório:
 
@@ -32,24 +38,36 @@ Para configurar o frontend, siga os passos abaixo:
    git clone <link-do-repositorio>
    ```
 
-2. Entre no diretório do frontend:
+2. Entre no diretório do backend:
 
    ```bash
-   cd frontend
+   cd fullstack
+   cd backend
    ```
 
 3. Instale as dependências:
    ```bash
-   npm install
+   pip install django
+   pip install celery
+   pip install dotenv
+   pip install django-jazzmin
+   pip install -r requirements.txt
+   ```
+4. Faça as migrações:
+   ```bash
+   python manage.py makemigrations
+   python manage.py migrate
    ```
 
-### Variáveis de Ambiente
+## Desenvolvimento
 
-Crie um arquivo `.env` na raiz da pasta `frontend` seguindo o modelo abaixo:
+Para rodar o backend em modo de desenvolvimento:
 
-```env
-VITE_API_URL=http://localhost:8000
+```bash
+python manage.py runserver
 ```
+
+O servidor iniciará em `http://`.
 
 ## Desenvolvimento
 

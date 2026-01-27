@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { type Reserva } from "@/context/reserva-context-hook";
+import { type Reserva } from "@/hooks/reserva-context-hook";
 import api from "@/api";
 import { toast } from "sonner";
 

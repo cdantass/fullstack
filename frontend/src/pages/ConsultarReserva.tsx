@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useReservas, type Reserva } from "@/context/reserva-context-hook";
+import { useReservas, type Reserva } from "@/hooks/reserva-context-hook";
 import { useAuth } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,7 +109,7 @@ export default function ConsultarReservaPage() {
     if (timeRange === "custom") {
       if (startDate) {
         data = data.filter(
-          (r) => new Date(r.data_criacao) >= new Date(startDate)
+          (r) => new Date(r.data_criacao) >= new Date(startDate),
         );
       }
       if (endDate) {
@@ -250,7 +250,7 @@ export default function ConsultarReservaPage() {
   const totalPages = Math.ceil(sortedAndFilteredReservas.length / perPage);
   const pageData = sortedAndFilteredReservas.slice(
     (currentPage - 1) * perPage,
-    currentPage * perPage
+    currentPage * perPage,
   );
 
   const filterStatuses = [
@@ -468,7 +468,7 @@ export default function ConsultarReservaPage() {
             {(() => {
               // Filter out 'combinado' rows - they'll show as children of parent
               const mainRows = pageData.filter(
-                (r) => (r.status || "").toLowerCase() !== "combinado"
+                (r) => (r.status || "").toLowerCase() !== "combinado",
               );
 
               if (mainRows.length === 0) {
@@ -540,8 +540,8 @@ export default function ConsultarReservaPage() {
                             getStatusBadgeClasses(
                               row.status === "combinado"
                                 ? "aprovado"
-                                : row.status
-                            )
+                                : row.status,
+                            ),
                           )}
                         >
                           {(() => {
@@ -575,7 +575,7 @@ export default function ConsultarReservaPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setExpandedChild(
-                                expandedChild === child.id ? null : child.id
+                                expandedChild === child.id ? null : child.id,
                               );
                             }}
                           >
@@ -597,13 +597,13 @@ export default function ConsultarReservaPage() {
                             <td className="p-2 text-muted-foreground text-sm">
                               {formatDateTime(
                                 child.data_saida,
-                                child.horario_saida
+                                child.horario_saida,
                               )}
                             </td>
                             <td className="p-2 text-muted-foreground text-sm">
                               {formatDateTime(
                                 child.data_retorno,
-                                child.horario_retorno
+                                child.horario_retorno,
                               )}
                             </td>
                             <td className="p-2">
@@ -612,8 +612,8 @@ export default function ConsultarReservaPage() {
                                   getStatusBadgeClasses(
                                     row.status === "combinado"
                                       ? "aprovado"
-                                      : row.status
-                                  )
+                                      : row.status,
+                                  ),
                                 )}
                               >
                                 {(() => {

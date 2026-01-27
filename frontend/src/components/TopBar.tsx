@@ -18,7 +18,7 @@ export const TopBar = React.memo(function TopBar() {
 
   return (
     <header className="w-full bg-topbar-background dark:bg-gray-900 shadow flex items-center justify-between px-6 py-3 h-[80px]">
-      {/* Left side - Page title + breadcrumbs */}
+      {/* Left side - Page title + breadcrumbs MUDAR NO FUTURO ACHO QUE ESTÁ FEIO  */}
       <div className="flex items-center gap-4">
         <div className="flex flex-col">
           <h1 className="text-lg font-semibold text-white dark:text-white">

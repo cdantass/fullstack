@@ -1,10 +1,10 @@
 import * as XLSX from "xlsx";
-import type { Reserva } from "@/context/reserva-context-hook";
+import type { Reserva } from "@/hooks/reserva-context-hook";
 import { formatDateTime, formatStatusLabel } from "./utils";
 
 export function exportReservasToExcel(
   reservas: Reserva[],
-  allReservas: Reserva[]
+  allReservas: Reserva[],
 ) {
   // Sort and group reservations to match UI logic:
   // Parent rows (not 'combinado') at top level,
@@ -14,7 +14,7 @@ export function exportReservasToExcel(
 
   // Filter for main rows (not children of a shared trip)
   const mainRows = reservas.filter(
-    (r) => (r.status || "").toLowerCase() !== "combinado"
+    (r) => (r.status || "").toLowerCase() !== "combinado",
   );
 
   mainRows.forEach((parent) => {
@@ -26,7 +26,7 @@ export function exportReservasToExcel(
       (parent.status || "").toLowerCase() === "viagem_compartilhada";
     if (isViagemCompartilhada) {
       const childRows = allReservas.filter(
-        (r) => r.viagem_compartilhada === parent.id
+        (r) => r.viagem_compartilhada === parent.id,
       );
       childRows.forEach((child) => {
         rows.push(prepareReservaRow(child, true));
@@ -59,7 +59,7 @@ export function exportReservasToExcel(
 
   XLSX.writeFile(
     workbook,
-    `reservas_${new Date().toISOString().split("T")[0]}.xlsx`
+    `reservas_${new Date().toISOString().split("T")[0]}.xlsx`,
   );
 }
 

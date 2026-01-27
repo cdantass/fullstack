@@ -17,7 +17,7 @@ import { ShareTripCard } from "./ShareTripCard";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { type Reserva } from "@/context/reserva-context-hook";
+import { type Reserva } from "@/hooks/reserva-context-hook";
 import { formatDateTime, formatStatusLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
@@ -87,7 +87,7 @@ export function ReservaCard({
     toPng(cardRef.current, {
       cacheBust: true,
       backgroundColor: "#fff",
-      pixelRatio: 2, // Modern mobile screens have high DPI
+      pixelRatio: 2,
     })
       .then((dataUrl) => {
         const link = document.createElement("a");
@@ -246,7 +246,7 @@ export function ReservaCard({
                         "w-4 h-4",
                         s <= (reserva.avaliacao?.nota || 0)
                           ? "text-yellow-500 fill-yellow-500"
-                          : "text-muted-foreground"
+                          : "text-muted-foreground",
                       )}
                     />
                   ))}
@@ -272,8 +272,8 @@ export function ReservaCard({
           <Badge
             className={cn(
               getStatusBadgeClasses(
-                reserva.status === "combinado" ? "aprovado" : reserva.status
-              )
+                reserva.status === "combinado" ? "aprovado" : reserva.status,
+              ),
             )}
           >
             {(() => {
@@ -288,7 +288,7 @@ export function ReservaCard({
         </div>
 
         {["pendente", "aprovado"].includes(
-          (reserva.status || "").toLowerCase()
+          (reserva.status || "").toLowerCase(),
         ) &&
           onCancel && (
             <div className="md:col-span-2 flex justify-end mt-4 border-t pt-4">
@@ -340,7 +340,7 @@ export function ReservaCard({
 
         <div className="md:col-span-2 flex justify-end gap-2 mt-2">
           {["aprovado", "concluido", "viagem_compartilhada"].includes(
-            reserva.status.toLowerCase()
+            reserva.status.toLowerCase(),
           ) && (
             <Button
               className="bg-teal-600 hover:bg-teal-700 text-white"

@@ -1,14 +1,6 @@
 import React from "react";
-import {
-  Car,
-  User,
-  MapPin,
-  Calendar,
-  Clock,
-  Users,
-  ShieldCheck,
-} from "lucide-react";
-import { type Reserva } from "@/context/reserva-context-hook";
+import { Car, User, MapPin, Calendar, Clock, Users } from "lucide-react";
+import { type Reserva } from "@/hooks/reserva-context-hook";
 import { formatDateTime } from "@/lib/utils";
 
 interface ShareTripCardProps {

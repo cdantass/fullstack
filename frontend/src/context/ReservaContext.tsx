@@ -6,7 +6,7 @@ import {
   ReservaContext,
   type Reserva,
   type AddReservaPayload,
-} from "./reserva-context-hook";
+} from "../hooks/reserva-context-hook";
 
 export const ReservaProvider = ({ children }: { children: ReactNode }) => {
   const [reservas, setReservas] = useState<Reserva[]>([]);
@@ -39,7 +39,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
 
   const updateReserva = (id: number, updates: Partial<Reserva>) => {
     setReservas((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
+      prev.map((r) => (r.id === id ? { ...r, ...updates } : r)),
     );
   };
 

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Fragment } from "react";
-import { useReservas, type Reserva } from "@/context/reserva-context-hook";
+import { useReservas, type Reserva } from "@/hooks/reserva-context-hook";
 import { useAuth } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -142,22 +142,22 @@ export default function AutorizarPage() {
     () =>
       motoristas.reduce(
         (acc, m) => ({ ...acc, [m.id]: m.nome_motorista }),
-        {} as Record<number, string>
+        {} as Record<number, string>,
       ),
-    [motoristas]
+    [motoristas],
   );
   const veiculoMap = React.useMemo(
     () =>
       veiculos.reduce(
         (acc, v) => ({ ...acc, [v.id]: `${v.modelo} - ${v.placa}` }),
-        {} as Record<number, string>
+        {} as Record<number, string>,
       ),
-    [veiculos]
+    [veiculos],
   );
 
   const handleSelectReserva = (id: number) => {
     setSelectedReservas((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
 
@@ -168,11 +168,11 @@ export default function AutorizarPage() {
 
     if (pendingIds.every((id) => selectedReservas.includes(id))) {
       setSelectedReservas((prev) =>
-        prev.filter((id) => !pendingIds.includes(id))
+        prev.filter((id) => !pendingIds.includes(id)),
       );
     } else {
       setSelectedReservas((prev) =>
-        Array.from(new Set([...prev, ...pendingIds]))
+        Array.from(new Set([...prev, ...pendingIds])),
       );
     }
   };
@@ -184,7 +184,7 @@ export default function AutorizarPage() {
 
     // Aggregate unique stops and passengers
     const allParadas = Array.from(
-      new Set(selected.flatMap((r) => r.paradas.map((p) => p.local)))
+      new Set(selected.flatMap((r) => r.paradas.map((p) => p.local))),
     )
       .filter(Boolean)
       .map((local) => ({ local }));
@@ -193,10 +193,10 @@ export default function AutorizarPage() {
       new Set(
         selected.flatMap((r) =>
           [r.passageiro1, r.passageiro2, r.passageiro3, r.passageiro4].filter(
-            Boolean
-          )
-        )
-      )
+            Boolean,
+          ),
+        ),
+      ),
     ).filter(Boolean) as string[];
 
     // Calculate earliest departure and latest return
@@ -260,7 +260,7 @@ export default function AutorizarPage() {
       await fetchReservas();
 
       toast.success(
-        `Viagens combinadas com sucesso! Nova viagem compartilhada #${response.data.id} criada.`
+        `Viagens combinadas com sucesso! Nova viagem compartilhada #${response.data.id} criada.`,
       );
       setSelectedReservas([]);
       setIsCombineModalOpen(false);
@@ -272,7 +272,7 @@ export default function AutorizarPage() {
 
   const handleUpdateReserva = async (
     id: number,
-    status: "aprovado" | "recusado"
+    status: "aprovado" | "recusado",
   ) => {
     const reservaOriginal = reservas.find((r) => r.id === id);
     if (!reservaOriginal) {
@@ -293,12 +293,12 @@ export default function AutorizarPage() {
       const linkedReservas = reservas.filter(
         (r) =>
           r.viagem_compartilhada === reservaOriginal.viagem_compartilhada &&
-          r.status.toLowerCase() === "pendente"
+          r.status.toLowerCase() === "pendente",
       );
 
       if (linkedReservas.length > 1) {
         const confirmShared = window.confirm(
-          "Esta reserva faz parte de uma viagem compartilhada. Deseja aplicar a mesma aprovação (motorista/veículo) para todas as reservas vinculadas?"
+          "Esta reserva faz parte de uma viagem compartilhada. Deseja aplicar a mesma aprovação (motorista/veículo) para todas as reservas vinculadas?",
         );
         if (confirmShared) {
           idsToUpdate = linkedReservas.map((r) => r.id);
@@ -360,20 +360,20 @@ export default function AutorizarPage() {
           };
           updateReserva(targetId, localUpdate as Partial<Reserva>);
           setObs((s) => ({ ...s, [targetId]: "" }));
-        })
+        }),
       );
 
       toast(
         `Reserva(s) ${
           status === "aprovado" ? "aprovada(s)" : "negada(s)"
-        } com sucesso!`
+        } com sucesso!`,
       );
     } catch (error) {
       console.error(error);
       toast.error(
         `Falha ao ${
           status === "aprovado" ? "aprovar" : "recusar"
-        } a(s) reserva(s).`
+        } a(s) reserva(s).`,
       );
     }
   };
@@ -385,7 +385,7 @@ export default function AutorizarPage() {
       // Normalize filter: "Viagem Compartilhada" -> "viagem_compartilhada"
       const normalizedFilter = filter.toLowerCase().replace(/\s+/g, "_");
       data = data.filter(
-        (r) => (r.status || "").toLowerCase() === normalizedFilter
+        (r) => (r.status || "").toLowerCase() === normalizedFilter,
       );
     }
 
@@ -402,7 +402,7 @@ export default function AutorizarPage() {
         // Helper to check passengers
         const hasPassageiro = (term: string) =>
           [r.passageiro1, r.passageiro2, r.passageiro3, r.passageiro4].some(
-            (p) => p && p.toLowerCase().includes(term)
+            (p) => p && p.toLowerCase().includes(term),
           );
 
         if (fieldMatch) {
@@ -458,7 +458,7 @@ export default function AutorizarPage() {
           hasPassageiro(lowerSearch) ||
           (r.paradas &&
             r.paradas.some(
-              (p) => p.local && p.local.toLowerCase().includes(lowerSearch)
+              (p) => p.local && p.local.toLowerCase().includes(lowerSearch),
             ))
         );
       });
@@ -466,7 +466,7 @@ export default function AutorizarPage() {
 
     return data.sort(
       (a, b) =>
-        new Date(b.data_criacao).getTime() - new Date(a.data_criacao).getTime()
+        new Date(b.data_criacao).getTime() - new Date(a.data_criacao).getTime(),
     );
   }, [reservas, filter, searchTerm]);
 
@@ -561,7 +561,7 @@ export default function AutorizarPage() {
               {(() => {
                 // Filter out 'combinado' rows - they'll show as children of parent
                 const mainRows = filteredReservas.filter(
-                  (r) => (r.status || "").toLowerCase() !== "combinado"
+                  (r) => (r.status || "").toLowerCase() !== "combinado",
                 );
 
                 if (mainRows.length === 0) {
@@ -631,7 +631,7 @@ export default function AutorizarPage() {
                         <td className="p-3 whitespace-nowrap">
                           {formatDateTime(
                             row.data_criacao,
-                            "" // Time included in ISO
+                            "", // Time included in ISO
                           )}
                         </td>
                         <td className="p-3">
@@ -645,7 +645,7 @@ export default function AutorizarPage() {
                         <td className="p-3 whitespace-nowrap">
                           {formatDateTime(
                             row.data_retorno,
-                            row.horario_retorno
+                            row.horario_retorno,
                           )}
                         </td>
                         <td className="p-3 whitespace-nowrap">
@@ -654,8 +654,8 @@ export default function AutorizarPage() {
                               getStatusBadgeClasses(
                                 row.status === "combinado"
                                   ? "aprovado"
-                                  : row.status
-                              )
+                                  : row.status,
+                              ),
                             )}
                           >
                             {(() => {
@@ -687,7 +687,7 @@ export default function AutorizarPage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setExpandedChild(
-                                  expandedChild === child.id ? null : child.id
+                                  expandedChild === child.id ? null : child.id,
                                 );
                               }}
                             >
@@ -711,13 +711,13 @@ export default function AutorizarPage() {
                               <td className="p-3 whitespace-nowrap text-muted-foreground text-sm">
                                 {formatDateTime(
                                   child.data_saida,
-                                  child.horario_saida
+                                  child.horario_saida,
                                 )}
                               </td>
                               <td className="p-3 whitespace-nowrap text-muted-foreground text-sm">
                                 {formatDateTime(
                                   child.data_retorno,
-                                  child.horario_retorno
+                                  child.horario_retorno,
                                 )}
                               </td>
                               <td className="p-3 whitespace-nowrap">
@@ -726,8 +726,8 @@ export default function AutorizarPage() {
                                     getStatusBadgeClasses(
                                       row.status === "combinado"
                                         ? "aprovado"
-                                        : row.status
-                                    )
+                                        : row.status,
+                                    ),
                                   )}
                                 >
                                   {(() => {
@@ -895,7 +895,7 @@ export default function AutorizarPage() {
                             )}
                             {/* Concluir button for aprovado/viagem_compartilhada */}
                             {["aprovado", "viagem_compartilhada"].includes(
-                              (row.status || "").toLowerCase()
+                              (row.status || "").toLowerCase(),
                             ) && (
                               <div className="border-t pt-4 mt-4">
                                 <Button
@@ -932,7 +932,7 @@ export default function AutorizarPage() {
           {/* Side-by-side comparison of selected chamados */}
           {(() => {
             const selectedChamados = reservas.filter((r) =>
-              selectedReservas.includes(r.id)
+              selectedReservas.includes(r.id),
             );
             const totalPassengers = combineFormData.passageiros.length;
             const hasPassengerWarning = totalPassengers > 4;
@@ -1016,14 +1016,14 @@ export default function AutorizarPage() {
                             Saída:{" "}
                             {formatDateTime(
                               chamado.data_saida,
-                              chamado.horario_saida
+                              chamado.horario_saida,
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             Retorno:{" "}
                             {formatDateTime(
                               chamado.data_retorno,
-                              chamado.horario_retorno
+                              chamado.horario_retorno,
                             )}
                           </div>
                           {passengers.length > 0 && (
@@ -1212,7 +1212,7 @@ export default function AutorizarPage() {
                         setCombineFormData((prev) => ({
                           ...prev,
                           passageiros: prev.passageiros.filter(
-                            (_, idx) => idx !== i
+                            (_, idx) => idx !== i,
                           ),
                         }));
                       }}

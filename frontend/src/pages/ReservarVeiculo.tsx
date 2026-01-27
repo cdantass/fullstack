@@ -43,7 +43,7 @@ import {
 import { toast } from "sonner";
 import api from "@/api";
 import { cn } from "@/lib/utils";
-import { useReservas } from "@/context/reserva-context-hook";
+import { useReservas } from "@/hooks/reserva-context-hook";
 import { useAuth } from "@/context/auth-context";
 
 const formSchema = z
@@ -94,7 +94,7 @@ function TagInput({
         <Input
           className={cn(
             "bg-white",
-            hasError && "ring-2 ring-red-500 focus-visible:ring-red-500"
+            hasError && "ring-2 ring-red-500 focus-visible:ring-red-500",
           )}
           value={inputValue}
           placeholder={placeholder}
@@ -131,7 +131,7 @@ function TagInput({
               className="ml-2"
               onClick={() => {
                 const filtered = field.value.filter(
-                  (_: any, idx: number) => idx !== i
+                  (_: any, idx: number) => idx !== i,
                 );
                 field.onChange(filtered);
               }}
@@ -203,7 +203,7 @@ export default function ReservaPage() {
   const addItem = (
     fieldName: "paradas" | "passageiros",
     value: string,
-    limit?: number
+    limit?: number,
   ) => {
     if (!value.trim()) {
       if (fieldName === "paradas") setParadaError(true);
@@ -278,7 +278,8 @@ export default function ReservaPage() {
     } catch (error) {
       console.error(error);
       toast.error(
-        (error as any)?.response?.data?.message || "Erro ao enviar solicitação."
+        (error as any)?.response?.data?.message ||
+          "Erro ao enviar solicitação.",
       );
     } finally {
       setLoading(false);
@@ -286,9 +287,9 @@ export default function ReservaPage() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 justify-center p-6 max-w-7xl mx-auto">
-      {/* LEFT COLUMN */}
-      <div className="max-w-3xl w-full">
+    <div className="flex flex-col lg:flex-row gap-8 justify-between p-6 max-w-[1600px] mx-auto">
+      {/* LEFT COLUMN - MAIN FORM */}
+      <div className="flex-1 min-w-0 max-w-4xl">
         <Card>
           <CardHeader>
             <CardTitle>Reservar Veículo</CardTitle>
@@ -388,7 +389,7 @@ export default function ReservaPage() {
                         const success = addItem(
                           "passageiros",
                           passageiroInput,
-                          4
+                          4,
                         );
                         if (success) {
                           setPassageiroInput("");

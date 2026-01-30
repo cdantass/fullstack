@@ -134,9 +134,14 @@ export default function ConsultarReservaPage() {
 
     // Status filtering
     if (filter) {
-      // Normalize filter: "Viagem Compartilhada" -> "viagem_compartilhada"
-      const normalizedFilter = filter.toLowerCase().replace(/\s+/g, "_");
-      data = data.filter((r) => r.status.toLowerCase() === normalizedFilter);
+      if (filter === "Aprovado") {
+        data = data.filter((r) =>
+          ["aprovado", "combinado"].includes(r.status.toLowerCase()),
+        );
+      } else {
+        const normalizedFilter = filter.toLowerCase().replace(/\s+/g, "_");
+        data = data.filter((r) => r.status.toLowerCase() === normalizedFilter);
+      }
     }
 
     // Search term filtering
@@ -548,6 +553,8 @@ export default function ConsultarReservaPage() {
                             const s = row.status.toLowerCase();
                             if (s === "aprovado" || s === "combinado")
                               return "Autorizado";
+                            if (s === "viagem_compartilhada")
+                              return "Viagem Compartilhada";
                             if (s === "recusado" || s === "negado")
                               return "Negado";
                             if (s === "cancelado") return "Cancelado";
@@ -621,6 +628,8 @@ export default function ConsultarReservaPage() {
                                   const s = row.status.toLowerCase();
                                   if (s === "aprovado" || s === "combinado")
                                     return "Autorizado";
+                                  if (s === "viagem_compartilhada")
+                                    return "Viagem Compartilhada";
                                   if (s === "recusado" || s === "negado")
                                     return "Negado";
                                   if (s === "cancelado") return "Cancelado";

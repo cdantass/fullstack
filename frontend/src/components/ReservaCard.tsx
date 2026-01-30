@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
+import { useAuth } from "@/context/auth-context";
+
 interface ReservaCardProps {
   reserva: Reserva;
   onCancel?: (id: number) => void;
@@ -62,6 +64,7 @@ export function ReservaCard({
   onCancel,
   onAvaliar,
 }: ReservaCardProps) {
+  const { user } = useAuth();
   const veiculoNome = reserva.veiculo_designado
     ? `${reserva.veiculo_designado.modelo} - ${reserva.veiculo_designado.placa}`
     : "-";
@@ -101,6 +104,16 @@ export function ReservaCard({
         toast.error("Erro ao gerar imagem de compartilhamento.");
       });
   }, [reserva]);
+
+  // Check if cancellation is allowed (within 30 mins)
+  const isGestor = user?.usertype === "gestor";
+  const departureDate = new Date(
+    `${reserva.data_saida}T${reserva.horario_saida}`,
+  );
+  const now = new Date();
+  const diffInMinutes = (departureDate.getTime() - now.getTime()) / (1000 * 60);
+  const isLessThan30Min = diffInMinutes < 30;
+  const canCancel = isGestor || !isLessThan30Min;
 
   return (
     <Card
@@ -291,12 +304,21 @@ export function ReservaCard({
           (reserva.status || "").toLowerCase(),
         ) &&
           onCancel && (
-            <div className="md:col-span-2 flex justify-end mt-4 border-t pt-4">
+            <div className="md:col-span-2 flex justify-end mt-4 border-t pt-4 gap-2 items-center">
+              {!canCancel && (
+                <span className="text-xs text-red-600 font-medium">
+                  Cancelamento permitido apenas até 30 min antes.
+                </span>
+              )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className={cn(
+                      "bg-blue-600 hover:bg-blue-700 text-white",
+                      !canCancel && "opacity-50 cursor-not-allowed",
+                    )}
                     size="sm"
+                    disabled={!canCancel}
                   >
                     Cancelar Reserva
                   </Button>

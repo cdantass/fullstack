@@ -56,9 +56,11 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
       updateReserva(id, { status: "cancelado", autorizador_nome: autorizador });
       await fetchReservas();
       toast.success("Reserva cancelada com sucesso.");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Erro ao cancelar reserva.");
+      const errorMessage =
+        error.response?.data?.detail || "Erro ao cancelar reserva.";
+      toast.error(errorMessage);
       throw error;
     }
   };

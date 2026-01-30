@@ -1,6 +1,7 @@
+from datetime import datetime, timedelta
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from rest_framework import generics, viewsets, status
+from rest_framework import generics, viewsets, status, exceptions
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -81,6 +82,19 @@ class ChamadoViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         status_novo = self.request.data.get('status')
+        user = self.request.user
+        
+        # Rule: Only cancel up to 30 min before (except for admins/gestores)
+        if status_novo == 'cancelado' and not (user.is_superuser or user.groups.filter(name="Gestores").exists()):
+            instance = self.get_object()
+            
+            # Combine data_saida and horario_saida
+            departure_datetime = timezone.make_aware(datetime.combine(instance.data_saida, instance.horario_saida))
+            now = timezone.now()
+            
+            if departure_datetime - now < timedelta(minutes=30):
+                raise exceptions.ValidationError({"detail": "Não é possível cancelar uma reserva com menos de 30 minutos de antecedência."})
+
         extra_fields = {}
         
         if status_novo == 'aprovado':
@@ -226,7 +240,7 @@ class CombinarChamadosView(APIView):
             autorizador=request.user if request.user.is_authenticated else None,
             data_autorizacao=timezone.now(),
             observacao_autorizador=observacao,
-            status="aprovado"
+            status="viagem_compartilhada"
         )
 
         # Create paradas for the new chamado

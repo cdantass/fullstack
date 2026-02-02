@@ -338,14 +338,14 @@ export default function AutorizarPage() {
               : undefined;
 
           // Send just the IDs to the API
+          // Send just the IDs to the API
           const apiPayload = {
             ...targetReserva,
             status: status, // "aprovado" or "recusado"
             observacao_autorizador: obs[id] ?? "",
-            motorista_designado:
+            motorista_id:
               status === "aprovado" ? parseInt(motoristaId, 10) : null,
-            veiculo_designado:
-              status === "aprovado" ? parseInt(veiculoId, 10) : null,
+            veiculo_id: status === "aprovado" ? parseInt(veiculoId, 10) : null,
             autorizador_nome: authUser?.name,
             data_autorizacao: now.toISOString(),
           };

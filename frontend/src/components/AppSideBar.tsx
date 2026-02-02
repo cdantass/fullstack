@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Link } from "react-router-dom";
 import { Car } from "lucide-react";
 
 import { NavMain } from "@/components/NavMain";
@@ -51,7 +52,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="none" {...props}>
       <SidebarHeader className="bg-topbar-background dark:bg-gray-900 h-[80px]">
-        <img src="/images/logo_prevencao_corrupcao.png" alt="Logo da Sefaz" />
+        <Link to="/" className="w-full flex justify-center h-full">
+          <img
+            src="/images/logo_prevencao_corrupcao.png"
+            alt="Logo da Sefaz"
+            className="h-full object-contain cursor-pointer p-2"
+          />
+        </Link>
       </SidebarHeader>
 
       <SidebarContent>

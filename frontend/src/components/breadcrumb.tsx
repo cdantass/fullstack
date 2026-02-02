@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -36,8 +37,7 @@ export function BreadcrumbTopBar() {
           const label = formatSegment(segment);
 
           return (
-            <div key={href} className="flex items-center">
-              {/* <ChevronRight size={20} strokeWidth={5} /> */}
+            <React.Fragment key={href}>
               <BreadcrumbSeparator className="text-white" />
               <BreadcrumbItem>
                 {isLast ? (
@@ -50,7 +50,7 @@ export function BreadcrumbTopBar() {
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
-            </div>
+            </React.Fragment>
           );
         })}
       </BreadcrumbList>

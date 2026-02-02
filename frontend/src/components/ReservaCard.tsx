@@ -10,13 +10,21 @@ import {
   NotebookPen,
   XCircle,
   Share2,
+  Calendar,
+  ArrowRight,
 } from "lucide-react";
 import { useRef, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { ShareTripCard } from "./ShareTripCard";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { type Reserva } from "@/hooks/reserva-context-hook";
 import { formatDateTime, formatStatusLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -116,10 +124,26 @@ export function ReservaCard({
   const canCancel = isGestor || !isLessThan30Min;
 
   return (
-    <Card
-      key={reserva.id}
-      className="mb-4 overflow-hidden border-l-4 border-l-transparent"
-    >
+    <Card key={reserva.id} className="mb-4 overflow-hidden">
+      <CardHeader className="bg-muted/30 pb-4">
+        <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <span className="text-muted-foreground">#{reserva.id}</span>
+              <span>{reserva.municipio}</span>
+            </CardTitle>
+            <CardDescription className="flex items-center gap-2 mt-1">
+              <Calendar className="w-4 h-4" />
+              {formatDateTime(reserva.data_saida, reserva.horario_saida)}
+              <ArrowRight className="w-4 h-4 mx-1" />
+              {formatDateTime(reserva.data_retorno, reserva.horario_retorno)}
+            </CardDescription>
+          </div>
+          {reserva.is_compartilhado && (
+            <Badge variant="secondary">Compartilhado</Badge>
+          )}
+        </div>
+      </CardHeader>
       <CardContent className="grid md:grid-cols-2 gap-6 p-4">
         <div className="space-y-3">
           <div className="flex items-center gap-2">
@@ -361,18 +385,19 @@ export function ReservaCard({
           )}
 
         <div className="md:col-span-2 flex justify-end gap-2 mt-2">
-          {["aprovado", "concluido", "viagem_compartilhada"].includes(
-            reserva.status.toLowerCase(),
-          ) && (
-            <Button
-              className="bg-teal-600 hover:bg-teal-700 text-white"
-              size="sm"
-              onClick={handleShare}
-            >
-              <Share2 className="w-4 h-4 mr-2" />
-              Gerar Imagem Compartilhável
-            </Button>
-          )}
+          {isGestor &&
+            ["aprovado", "concluido", "viagem_compartilhada"].includes(
+              reserva.status.toLowerCase(),
+            ) && (
+              <Button
+                className="bg-teal-600 hover:bg-teal-700 text-white"
+                size="sm"
+                onClick={handleShare}
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Gerar Imagem Compartilhável
+              </Button>
+            )}
         </div>
 
         {/* Hidden card for image generation */}

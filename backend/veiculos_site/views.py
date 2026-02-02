@@ -265,6 +265,99 @@ class AvaliacaoViewSet(viewsets.ModelViewSet):
     serializer_class = AvaliacaoSerializer
     permission_classes = [IsAuthenticated]
 
+
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
+
+
+class DashboardStatsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        now = timezone.localtime(timezone.now())
+        today = now.date()
+        
+        user = request.user
+        # Logic: If admin/gestor -> Global stats. If regular user -> My stats.
+        # But 'Available Vehicles' and 'Available Drivers' are always global.
+        
+        is_gestor = False
+        if user.is_authenticated:
+            is_gestor = user.is_staff or user.groups.filter(name="Gestores").exists()
+            
+        if is_gestor:
+            chamados_qs = Chamado.objects.all()
+        elif user.is_authenticated:
+            chamados_qs = Chamado.objects.filter(solicitante=user)
+        else:
+            # If default permission is AllowAny, verify what frontend sends.
+            # Assuming public dashboard or requires login.
+            # If unauthenticated, return empty stats or global stats?
+            # Safe route: empty stats for confidential info, global for generic.
+            # But the 'cards' imply operation control.
+            # Let's assume empty for unauth.
+             return Response({
+                "pendingSolicitations": 0,
+                "activeTrips": 0,
+                "totalTripsToday": 0,
+                "availableVehicles": Veiculo.objects.filter(status='disponivel').count(),
+                "availableDrivers": Motorista.objects.filter(status='disponivel').count(),
+                "recentPending": [],
+                "activeList": []
+            })
+
+        # 1. Pending
+        pending_count = chamados_qs.filter(status='pendente').count()
+
+        # 2. Active Trips (Calculated based on time period)
+        # Status candidates: aprovado, em_andamento, viagem_compartilhada
+        active_candidates = chamados_qs.filter(
+            status__in=['aprovado', 'em_andamento', 'viagem_compartilhada']
+        )
+        
+        active_list = []
+        for c in active_candidates:
+            # Combine date and time
+            if not c.data_saida or not c.horario_saida or not c.data_retorno or not c.horario_retorno:
+                continue
+                
+            start = timezone.make_aware(datetime.combine(c.data_saida, c.horario_saida))
+            end = timezone.make_aware(datetime.combine(c.data_retorno, c.horario_retorno))
+            
+            if start <= now <= end:
+                active_list.append(c)
+
+        active_count = len(active_list)
+        
+        # 3. Today Trips
+        today_trips_count = chamados_qs.filter(data_saida=today).count()
+
+        # 4. Availability (Global)
+        avail_vehicles = Veiculo.objects.filter(status='disponivel').count()
+        avail_drivers = Motorista.objects.filter(status='disponivel').count()
+
+        # Lists for tables
+        # Top 5 pending
+        recent_pending_qs = chamados_qs.filter(status='pendente').order_by('-data_criacao')[:5]
+        recent_pending_data = ChamadoSerializer(recent_pending_qs, many=True, context={'request': request}).data
+        
+        # Top 5 active
+        # active_list is already filtered in python, slice it
+        active_list_top5 = active_list[:5]
+        active_list_data = ChamadoSerializer(active_list_top5, many=True, context={'request': request}).data
+
+        # Unrated Trips (Finished but no evaluation)
+        unrated_trips_qs = chamados_qs.filter(status='concluido', avaliacao__isnull=True).order_by('-data_conclusao')[:3]
+        unrated_trips_data = ChamadoSerializer(unrated_trips_qs, many=True, context={'request': request}).data
+
+        return Response({
+            "pendingSolicitations": pending_count,
+            "activeTrips": active_count,
+            "totalTripsToday": today_trips_count,
+            "availableVehicles": avail_vehicles,
+            "availableDrivers": avail_drivers,
+            "recentPending": recent_pending_data,
+            "activeList": active_list_data,
+            "unratedTrips": unrated_trips_data
+        })
 

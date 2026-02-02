@@ -11,6 +11,7 @@ router.register(r'avaliacoes', views.AvaliacaoViewSet, basename='avaliacao')
 
 urlpatterns = [
     # Custom endpoints must come BEFORE router to take precedence
+    path("dashboard/stats/", views.DashboardStatsView.as_view(), name="dashboard-stats"),
     path("chamados/combinar/", CombinarChamadosView.as_view(), name="combinar-chamados"),
     path('', include(router.urls)),
     path('me/', views.UserProfileView.as_view(), name='user-profile'),

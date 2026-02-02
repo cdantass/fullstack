@@ -74,7 +74,7 @@ export type ReservaContextType = {
 };
 
 export const ReservaContext = createContext<ReservaContextType | undefined>(
-  undefined
+  undefined,
 );
 
 export const useReservas = () => {

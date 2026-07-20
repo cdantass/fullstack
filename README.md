@@ -1,4 +1,4 @@
-# Sefaz Veículos
+# Chamado de Veículos
 
 Sistema de gerenciamento e reserva de veículos da SEFAZ, composto por um backend em Django e um frontend em React.
 
@@ -96,7 +96,3 @@ Para acessar a documentação da API, digitamos:
 ```bash
 http://127.0.0.1:8000/api/docs/
 ```
-
-## Licença
-
-Este projeto é de uso interno da SEFAZ.

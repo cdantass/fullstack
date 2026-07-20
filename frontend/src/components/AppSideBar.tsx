@@ -54,7 +54,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader className="bg-topbar-background dark:bg-gray-900 h-[80px]">
         <Link to="/" className="w-full flex justify-center h-full">
           <img
-            src="/images/logo_prevencao_corrupcao.png"
+            src="..."
             alt="Logo da Sefaz"
             className="h-full object-contain cursor-pointer p-2"
           />

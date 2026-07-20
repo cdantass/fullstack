@@ -45,7 +45,7 @@ export const ShareTripCard: React.FC<ShareTripCardProps> = ({
               </p>
             </div>
             <img
-              src="/images/logo_prevencao_corrupcao.png"
+              src="..."
               alt="Logo SEFAZ"
               className="h-12 w-auto brightness-0 invert object-contain"
             />

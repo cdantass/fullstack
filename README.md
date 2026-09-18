@@ -1,6 +1,6 @@
 # Chamado de Veículos
 
-Sistema de gerenciamento e reserva de veículos da SEFAZ, composto por um backend em Django e um frontend em React.
+Sistema de gerenciamento e reserva de veículos, composto por um backend em Django e um frontend em React.
 
 ## Estrutura do Repositório
 
